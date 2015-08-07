@@ -31,6 +31,14 @@ class CommonTest(unittest.TestCase):
         url = 'postgresql://postgres:pass@localhost:5432/testdb'
         self.assertEqual(url, pgtest.url('postgres', 'pass', 'localhost', 5432, 'testdb'))
 
+    def test_get_exe_path(self):
+        with self.assertRaises(IOError):
+            pgtest.get_exe_path('notafile')
+
+    def test_wait_for_server_timeout(self):
+        with self.assertRaises(pgtest.TimeoutError):
+            pgtest.wait_for_server_ready(0.1)
+
 
 @unittest.skipIf(sys.platform.startswith('win'), 'Unix only')
 class UnixFileTest(unittest.TestCase):
@@ -73,7 +81,8 @@ class WindowsFileTest(unittest.TestCase):
         self.assertEqual(None, pgtest.which('does not exist'))
 
     def test_locate_unavailable(self):
-        self.assertRaises(OSError, pgtest.locate('ping'))
+        with self.assertRaises(OSError):
+            pgtest.locate('ping')
 
 
 if __name__ == '__main__':

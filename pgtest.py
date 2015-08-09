@@ -237,7 +237,11 @@ class PGTest(object):
         except:
             self.cleanup()
             raise
-        self._create_database()
+        try:
+            self._create_database()
+            return True
+        except:
+            raise
 
     def stop_server(self):
         stop_cmd = self._pg_ctl_exe + ' stop -m fast -D ' + self._data_dir
@@ -267,6 +271,7 @@ class PGTest(object):
     def _init_base_dir(self):
         try:
             if self._copy_data_path:
+                shutil.rmtree(self._data_dir)
                 shutil.copytree(self._copy_data_path, self._data_dir)
             else:
                 init_cmd = (self._pg_ctl_exe + ' initdb -D ' +

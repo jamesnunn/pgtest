@@ -42,7 +42,7 @@ class CustomAssertions():
             raise AssertionError('Directory exists: {!r}'.format(path))
 
 
-class TestPgTestCleanup(unittest.TestCase, CustomAssertions):
+class TestPgTestOptions(unittest.TestCase, CustomAssertions):
 
     def test_cleanup(self):
         pg = pgtest.PGTest('test')
@@ -61,10 +61,24 @@ class TestPgTestCleanup(unittest.TestCase, CustomAssertions):
         self.assertDirExists(cluster)
         shutil.rmtree(base_dir, ignore_errors=True)
 
+    def test_copy_data(self):
+        pg_ctl_exe = pgtest.get_exe_path('pg_ctl')
+        temp_dir = tempfile.mkdtemp()
+        curr_dir = os.path.dirname(__file__)
+        unzip(os.path.join(curr_dir,'test_cluster.zip'), temp_dir)
+        data_dir = os.path.join(temp_dir, 'data')
+        pg = pgtest.PGTest('test', copy_data_path=data_dir)
+        pg.start_server()
+        self.assertTrue(pgtest.is_server_running(pg_ctl_exe, pg.cluster))
+        pg.close()
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
-class TestPgTestCopyData(unittest.TestCase, CustomAssertions):
-    pass
-
+    def test_username(self):
+        pg_ctl_exe = pgtest.get_exe_path('pg_ctl')
+        pg = pgtest.PGTest('test', username='jamesnunn')
+        pg.start_server()
+        self.assertTrue(pgtest.is_server_running(pg_ctl_exe, pg.cluster))
+        pg.close()
 
 
 class TestPgTestDefault(unittest.TestCase, CustomAssertions):
@@ -153,9 +167,9 @@ class ModuleFunctionsTest(unittest.TestCase):
     def test_is_valid_cluster_dir(self):
         pg_ctl_exe = pgtest.get_exe_path('pg_ctl')
         temp_dir = tempfile.mkdtemp()
-        data_dir = os.path.join(temp_dir, 'data')
         curr_dir = os.path.dirname(__file__)
         unzip(os.path.join(curr_dir,'test_cluster.zip'), temp_dir)
+        data_dir = os.path.join(temp_dir, 'data')
         self.assertTrue(pgtest.is_valid_cluster_dir(pg_ctl_exe, data_dir))
         shutil.rmtree(temp_dir, ignore_errors=True)
 
@@ -168,9 +182,9 @@ class ModuleFunctionsTest(unittest.TestCase):
     def test_is_not_server_running(self):
         pg_ctl_exe = pgtest.get_exe_path('pg_ctl')
         temp_dir = tempfile.mkdtemp()
-        data_dir = os.path.join(temp_dir, 'data')
         curr_dir = os.path.dirname(__file__)
         unzip(os.path.join(curr_dir,'test_cluster.zip'), temp_dir)
+        data_dir = os.path.join(temp_dir, 'data')
         self.assertFalse(pgtest.is_server_running(pg_ctl_exe, data_dir))
         shutil.rmtree(temp_dir, ignore_errors=True)
 

@@ -101,35 +101,6 @@ def get_exe_path(filename):
         return pg_ctl_exe
 
 
-def url(user, password, host, port, db):
-    return 'postgresql://{user}:{password}@{host}:{port}/{db}'.format(
-            user=user, password=password, host=host, port=port, db=db)
-
-
-def is_valid_cluster_dir(path):
-    status_cmd = PG_CTL_EXE + ' status -D ' + path
-    status_proc = subprocess.Popen(status_cmd, shell=True,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
-    out, err = status_proc.communicate()
-    if out and 'server' in out:
-        return True
-    elif err and 'not a database cluster directory' in err:
-        return False
-
-
-def is_valid_cluster_dir(path):
-    status_cmd = PG_CTL_EXE + ' status -D ' + path
-    status_proc = subprocess.Popen(status_cmd, shell=True,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
-    out, err = status_proc.communicate()
-    if out and 'running' in out:
-        return True
-    elif err and 'not a database cluster directory' in err:
-        return False
-
-
 def str_alphanum(instr):
     for c in instr:
         if not (c.isalpha() or c.isdigit()):
@@ -138,77 +109,160 @@ def str_alphanum(instr):
 
 
 class PGTest(object):
-    def __init__(self, db_name='test', copy_data_path=None):
-        assert str_alphanum(db_name), 'Database name must contain only letters and/or numbers'
+    def __init__(self, database, username='postgres', port=None, log_file=None,
+                 no_cleanup=False, copy_data_path=None, cluster=None,
+                 pg_ctl=None):
+        assert str_alphanum(database), 'Database must contain only letters and/or numbers'
+        self._database = database
+
+        assert str_alphanum(username), 'Username must contain only letters and/or numbers'
+        self._username = username
         if copy_data_path:
             assert os.path.exists(copy_data_path), 'Directory does not exist: {path}'.format(path=copy_data_path)
-            assert is_valid_cluster_dir(copy_data_path), 'Directory is not a database cluster directory: {path}'.format(path=copy_data_path)
-
-        self._pg_ctl_exe = get_exe_path('pg_ctl')
+            assert self._is_valid_cluster_dir(copy_data_path), 'Directory is not a database cluster directory: {path}'.format(path=copy_data_path)
         self._copy_data_path = copy_data_path
-        self._temp_dir = tempfile.mkdtemp()
-        self._log_file = os.path.join(self._temp_dir, 'log.txt')
-        self._data_dir = os.path.join(self._temp_dir, 'data')
-        self._db_name = db_name
-        self._port = bind_unused_port()
+
+        if port:
+            assert is_valid_port(port), 'Port is not between 1024 and 65535: {port}'.format(port=port)
+            self._port = port
+        else:
+            self._port = bind_unused_port()
+
+        if pg_ctl:
+            assert os.path.exists(pg_ctl), 'Executable does not exist: {path}'.format(path=pg_ctl)
+            self._pg_ctl_exe = get_exe_path(pg_ctl)
+        else:
+            self._pg_ctl_exe = get_exe_path('pg_ctl')
+
+        if cluster:
+            assert os.path.exists(cluster), 'Directory does not exist: {path}'.format(path=cluster)
+            self._cluster = cluster
+        else:
+            self._cluster = tempfile.mkdtemp()
+
+        if log_file:
+            self._log_file = log_file
+        else:
+            self._log_file = os.path.join(self._cluster, 'pgtest_log.txt')
+
+        self._data_dir = os.path.join(self._cluster, 'data')
+
         if not sys.platform.startswith('win'):
-            self._listen_socket_dir = os.path.join(self._temp_dir, 'tmp')
+            self._listen_socket_dir = os.path.join(self._cluster, 'tmp')
         else:
             self._listen_socket_dir = None
+
+        self._no_cleanup = no_cleanup
 
         self._create_dirs()
         self._init_cluster()
         self._set_dir_permissions()
-        self.start_server()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        self.close()
+
+    def __repr__(self):
+        return ('{!s}(database={!r}, username={!r}, port={!s}, log_file={!r}, '
+                'no_cleanup={!r}, copy_data_path={!r}, cluster={!r}, '
+                'pg_ctl={!r})').format(self.__class__.__name__,
+                self._database, self._username, self._port, self._log_file,
+                self._no_cleanup, self._copy_data_path, self._cluster,
+                self._pg_ctl_exe)
+
+    @property
+    def port(self):
+        return self._port
+
+    @property
+    def cluster(self):
+        return self._cluster
+
+    @property
+    def log_file(self):
+        return self._log_file
+
+    @property
+    def username(self):
+        return self._username
+
+    @property
+    def pg_ctl(self):
+        return self._pg_ctl_exe
+
+
+    def start_server(self):
+        if sys.platform.startswith('win'):
+            pg_cmd = (self._pg_ctl_exe + ' start -D ' + self._data_dir +
+                      ' -l ' + self._log_file + ' -o "-F -p ' +
+                      str(self._port) + ' -d 1 -c logging_collector=off"')
+        else:
+            pg_cmd = (self._pg_ctl_exe + ' start -D ' + self._data_dir +
+                      ' -l ' + self._log_file + ' -o "-F -p ' +
+                      str(self._port) + ' -d 1 -c logging_collector=off -k ' +
+                      self._listen_socket_dir + '"')
+        subprocess.Popen(pg_cmd, shell=True)
+        self._wait_for_server_ready(10)
         self._create_database()
+
+    def stop_server(self):
+        stop_cmd = self._pg_ctl_exe + ' stop -m fast -D ' + self._data_dir
+        stop = subprocess.Popen(stop_cmd, shell=True,
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE)
+        _, err = stop.communicate()
+        if err:
+            raise RuntimeError(err)
+
+    def close(self):
         self.stop_server()
-        self.cleanup()
+        if not self._no_cleanup:
+            self.cleanup()
+
+    def cleanup(self):
+        shutil.rmtree(self._cluster, ignore_errors=True)
+
+    def dsn(self, **kwargs):
+        dsn_dict = dict(kwargs)
+        dsn_dict.setdefault('port', self._port)
+        dsn_dict.setdefault('host', 'localhost')
+        dsn_dict.setdefault('user', self._username)
+        dsn_dict.setdefault('database', self._database)
+        return dsn_dict
+
+    def url(self):
+        return 'postgresql://{user}@localhost:{port}/{db}'.format(
+                user=self._username, port=self._port, db=self._database)
 
     def _init_cluster(self):
         if self._copy_data_path:
             shutil.copytree(self._copy_data_path, self._data_dir)
         else:
-            init_cmd = PG_CTL_EXE + ' initdb -D ' + self._data_dir + ' -o "-U postgres -A trust"'
+            init_cmd = (self._pg_ctl_exe + ' initdb -D ' +
+                        self._data_dir + ' -o "-U ' +
+                        self._username + ' -A trust"')
             init_proc = subprocess.Popen(init_cmd, shell=True,
                                          stdout=subprocess.PIPE,
                                          stderr=subprocess.PIPE)
-            out, err = init_proc.communicate()
+            _, err = init_proc.communicate()
             if err:
                 raise IOError(err)
-        assert is_valid_cluster_dir(self._data_dir), 'Failed to create cluster: {path}'.format(path=self._data_dir)
+        assert self._is_valid_cluster_dir(self._data_dir), 'Failed to create cluster: {path}'.format(path=self._data_dir)
 
     def _create_dirs(self):
-        for path in (self._temp_dir, self._data_dir, self._listen_socket_dir):
+        for path in (self._cluster, self._data_dir, self._listen_socket_dir):
             if path and not os.path.exists(path):
                 os.makedirs(path)
 
     def _set_dir_permissions(self):
-        for path in (self._temp_dir, self._data_dir, self._listen_socket_dir):
+        for path in (self._cluster, self._data_dir, self._listen_socket_dir):
             os.chmod(path, 0o700)
-
-    def start_server(self):
-        if sys.platform.startswith('win'):
-            pg_cmd = (self._pg_ctl_exe + ' start -D ' + self._data_dir + ' -l ' + self._log_file +
-                    ' -o "-F -p ' + str(self._port) + ' -d 1 -c logging_collector=off"')
-        else:
-            pg_cmd = (self._pg_ctl_exe + ' start -D ' + self._data_dir + ' -l ' + self._log_file +
-                    ' -o "-F -p ' + str(self._port) +
-                    ' -d 1 -c logging_collector=off -k ' + self._listen_socket_dir + '"')
-        subprocess.Popen(pg_cmd, shell=True)
-        self._wait_for_server_ready(10)
-
-    def dsn(self, **kwargs):
-        # "database=test host=localhost user=postgres"
-        params = dict(kwargs)
-        params.setdefault('port', self._port)
-        params.setdefault('host', 'localhost')
-        params.setdefault('user', 'postgres')
-        params.setdefault('database', self._db_name)
-        return params
 
     def _is_connection_available(self):
         try:
-            with closing(pg8000.connect(**self.dsn(database='template1'))):
+            with closing(pg8000.connect(**self.dsn(database='postgres'))):
                 pass
         except pg8000.Error:
             return False
@@ -219,30 +273,42 @@ class PGTest(object):
         endtime = datetime.datetime.utcnow() + datetime.timedelta(seconds=timeout)
         while not self._is_connection_available():
             time.sleep(0.1)
-            if datetime.datetime.utcnow() > endtime: # if more than two seconds has elapsed
+            if datetime.datetime.utcnow() > endtime:
                 raise TimeoutError('Server failed to start')
 
     def _create_database(self):
         with closing(pg8000.connect(**self.dsn(database='postgres'))) as conn:
             conn.autocommit = True
             with closing(conn.cursor()) as cursor:
-                cursor.execute('CREATE DATABASE {db_name}'.format(db_name=self._db_name))
+                query = 'CREATE DATABASE "{database}"'.format(database=self._database)
+                cursor.execute(query)
 
-    def stop_server(self):
-        stop_cmd = self._pg_ctl_exe + ' stop -m fast -D ' + self._data_dir
-        stop = subprocess.Popen(stop_cmd, shell=True,
+    def _is_valid_cluster_dir(self, path):
+        status_cmd = self._pg_ctl_exe + ' status -D ' + path
+        status_proc = subprocess.Popen(status_cmd, shell=True,
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
-        out, err = stop.communicate()
-        if err:
-            raise RuntimeError(err)
+        out, err = status_proc.communicate()
+        if out and 'server' in out:
+            return True
+        elif err and 'not a database cluster directory' in err:
+            return False
 
-    def _cleanup(self):
-        shutil.rmtree(self._temp_dir, ignore_errors=True)
+    def _is_cluster_running(self, path):
+        status_cmd = self._pg_ctl_exe + ' status -D ' + path
+        status_proc = subprocess.Popen(status_cmd, shell=True,
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE)
+        out, err = status_proc.communicate()
+        if out and 'no server running' not in out:
+            return True
+        elif err:
+            return False
 
 
 def main():
-    pg = PGTest()
+    with PGTest('test') as pg:
+        pg.start_server()
 
 
 if __name__ == '__main__':

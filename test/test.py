@@ -1,6 +1,4 @@
 # encoding: utf-8
-import os
-import random
 import socket
 import sys
 import unittest
@@ -8,7 +6,49 @@ import unittest
 import pgtest
 
 
-class CommonTest(unittest.TestCase):
+@unittest.skip
+class TestPostgresql(unittest.TestCase):
+    def test_basic(self):
+        try:
+            # start postgresql server
+            pgsql = testing.postgresql.Postgresql()
+            self.assertIsNotNone(pgsql)
+            params = pgsql.dsn()
+            self.assertEqual('test', params['database'])
+            self.assertEqual('127.0.0.1', params['host'])
+            self.assertEqual(pgsql.port, params['port'])
+            self.assertEqual('postgres', params['user'])
+
+            # connect to postgresql (w/ psycopg2)
+            conn = psycopg2.connect(**pgsql.dsn())
+            self.assertIsNotNone(conn)
+            self.assertRegexpMatches(pgsql.read_log(), 'is ready to accept connections')
+            conn.close()
+
+            # connect to postgresql (w/ sqlalchemy)
+            engine = sqlalchemy.create_engine(pgsql.url())
+            self.assertIsNotNone(engine)
+
+            # connect to postgresql (w/ pg8000)
+            conn = pg8000.connect(**pgsql.dsn())
+            self.assertIsNotNone(conn)
+            self.assertRegexpMatches(pgsql.read_log(), 'is ready to accept connections')
+            conn.close()
+        finally:
+            # shutting down
+            pid = pgsql.pid
+            self.assertTrue(pid)
+            os.kill(pid, 0)  # process is alive
+
+            pgsql.stop()
+            sleep(1)
+
+            self.assertIsNone(pgsql.pid)
+            with self.assertRaises(OSError):
+                os.kill(pid, 0)  # process is down
+
+
+class ModuleFunctionsTest(unittest.TestCase):
 
     def test_bind_unused_port(self):
         for _ in xrange(1000):
@@ -37,7 +77,7 @@ class CommonTest(unittest.TestCase):
 
     def test_wait_for_server_timeout(self):
         with self.assertRaises(pgtest.TimeoutError):
-            pgtest.wait_for_server_ready(0.1)
+            pgtest._wait_for_server_ready(0.1)
 
 
 @unittest.skipIf(sys.platform.startswith('win'), 'Unix only')

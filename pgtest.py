@@ -101,7 +101,7 @@ def get_exe_path(filename):
 
 def str_alphanum(instr):
     for c in instr:
-        if not (c.isalpha() or c.isdigit()):
+        if not (c.isalpha() or c.isdigit() or c == '_'):
             return False
     return True
 

@@ -82,6 +82,7 @@ def is_valid_port(port):
 
 def bind_unused_port():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # 0 binds to unused socket
     sock.bind(('localhost', 0))
     _, port = sock.getsockname()
     while not is_valid_port(port):

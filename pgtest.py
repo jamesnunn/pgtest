@@ -301,7 +301,8 @@ class PGTest(object):
     def _set_dir_permissions(self):
         try:
             for path in (self._base_dir, self._data_dir, self._listen_socket_dir):
-                os.chmod(path, 0o700)
+                if path and os.path.exists(path):
+                    os.chmod(path, 0o700)
         except:
             self.cleanup()
             raise

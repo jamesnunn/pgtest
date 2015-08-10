@@ -63,7 +63,7 @@ def which(in_file):
                     return os.path.normpath(file_path)
 
     if sys.platform.startswith('win'):
-        raise OSError('Not available on Windows')
+        return
     try:
         exact_file_regex = '/' + in_file + '$'
         results = subprocess.check_output(['locate', '-r', exact_file_regex])

@@ -63,10 +63,9 @@ class TestPgTestSetupOptions(unittest.TestCase, CustomAssertions):
             self.assertTrue(pgtest.is_server_running(pg_ctl_exe, pg.cluster))
 
     def test_invalid_username(self):
-        pg_ctl_exe = pgtest.get_exe_path('pg_ctl')
         with self.assertRaises(AssertionError):
             with pgtest.PGTest('test', username='james-nunn') as pg:
-                self.assertFalse(pgtest.is_server_running(pg_ctl_exe, pg.cluster))
+                pass
 
     @unittest.skipUnless(sys.platform.startswith('win'), 'Windows only')
     def test_windows_copy_data(self):

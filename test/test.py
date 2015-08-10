@@ -1,7 +1,6 @@
 # encoding: utf-8
 import os
 import re
-import socket
 import shutil
 import sys
 import tempfile

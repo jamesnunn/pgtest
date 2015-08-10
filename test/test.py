@@ -45,36 +45,28 @@ class CustomAssertions():
 class TestPgTestSetupOptions(unittest.TestCase, CustomAssertions):
 
     def test_cleanup(self):
-        pg = pgtest.PGTest('test')
-        pg.start_server()
-        base_dir = pg._base_dir
-        pg.close()
+        with pgtest.PGTest('test') as pg:
+            base_dir = pg._base_dir
         self.assertDirNotExists(base_dir)
 
     def test_no_cleanup(self):
-        pg = pgtest.PGTest('test', no_cleanup=True)
-        pg.start_server()
-        base_dir = pg._base_dir
-        cluster = pg.cluster
-        pg.close()
+        with pgtest.PGTest('test', no_cleanup=True) as pg:
+            base_dir = pg._base_dir
+            cluster = pg.cluster
         self.assertDirExists(base_dir)
         self.assertDirExists(cluster)
         shutil.rmtree(base_dir, ignore_errors=True)
 
     def test_username(self):
         pg_ctl_exe = pgtest.get_exe_path('pg_ctl')
-        pg = pgtest.PGTest('test', username='jamesnunn')
-        pg.start_server()
-        self.assertTrue(pgtest.is_server_running(pg_ctl_exe, pg.cluster))
-        pg.close()
+        with pgtest.PGTest('test', username='jamesnunn') as pg:
+            self.assertTrue(pgtest.is_server_running(pg_ctl_exe, pg.cluster))
 
     def test_invalid_username(self):
         pg_ctl_exe = pgtest.get_exe_path('pg_ctl')
         with self.assertRaises(AssertionError):
-            pg = pgtest.PGTest('test', username='james-nunn')
-            pg.start_server()
-            self.assertFalse(pgtest.is_server_running(pg_ctl_exe, pg.cluster))
-            pg.close()
+            with pgtest.PGTest('test', username='james-nunn') as pg:
+                self.assertFalse(pgtest.is_server_running(pg_ctl_exe, pg.cluster))
 
     @unittest.skipUnless(sys.platform.startswith('win'), 'Windows only')
     def test_windows_copy_data(self):
@@ -83,7 +75,7 @@ class TestPgTestSetupOptions(unittest.TestCase, CustomAssertions):
         curr_dir = os.path.dirname(__file__)
         unzip(os.path.join(curr_dir, 'test_windows_cluster.zip'), temp_dir)
         data_dir = os.path.join(temp_dir, 'data')
-        with open pgtest.PGTest('test', copy_data_path=data_dir) as pg:
+        with pgtest.PGTest('test', copy_data_path=data_dir) as pg:
             self.assertTrue(pgtest.is_server_running(pg_ctl_exe, pg.cluster))
         shutil.rmtree(temp_dir, ignore_errors=True)
 
@@ -94,7 +86,7 @@ class TestPgTestSetupOptions(unittest.TestCase, CustomAssertions):
         curr_dir = os.path.dirname(__file__)
         unzip(os.path.join(curr_dir, 'test_unix_cluster.zip'), temp_dir)
         data_dir = os.path.join(temp_dir, 'data')
-        with open pgtest.PGTest('test', copy_data_path=data_dir) as pg:
+        with pgtest.PGTest('test', copy_data_path=data_dir) as pg:
             self.assertTrue(pgtest.is_server_running(pg_ctl_exe, pg.cluster))
         shutil.rmtree(temp_dir, ignore_errors=True)
 

@@ -42,7 +42,7 @@ class CustomAssertions():
             raise AssertionError('Directory exists: {!r}'.format(path))
 
 
-class TestPgTestOptions(unittest.TestCase, CustomAssertions):
+class TestPgTestSetupOptions(unittest.TestCase, CustomAssertions):
 
     def test_cleanup(self):
         pg = pgtest.PGTest('test')
@@ -61,24 +61,42 @@ class TestPgTestOptions(unittest.TestCase, CustomAssertions):
         self.assertDirExists(cluster)
         shutil.rmtree(base_dir, ignore_errors=True)
 
-    def test_copy_data(self):
-        pg_ctl_exe = pgtest.get_exe_path('pg_ctl')
-        temp_dir = tempfile.mkdtemp()
-        curr_dir = os.path.dirname(__file__)
-        unzip(os.path.join(curr_dir,'test_cluster.zip'), temp_dir)
-        data_dir = os.path.join(temp_dir, 'data')
-        pg = pgtest.PGTest('test', copy_data_path=data_dir)
-        pg.start_server()
-        self.assertTrue(pgtest.is_server_running(pg_ctl_exe, pg.cluster))
-        pg.close()
-        shutil.rmtree(temp_dir, ignore_errors=True)
-
     def test_username(self):
         pg_ctl_exe = pgtest.get_exe_path('pg_ctl')
         pg = pgtest.PGTest('test', username='jamesnunn')
         pg.start_server()
         self.assertTrue(pgtest.is_server_running(pg_ctl_exe, pg.cluster))
         pg.close()
+
+    def test_invalid_username(self):
+        pg_ctl_exe = pgtest.get_exe_path('pg_ctl')
+        with self.assertRaises(AssertionError):
+            pg = pgtest.PGTest('test', username='james-nunn')
+            pg.start_server()
+            self.assertFalse(pgtest.is_server_running(pg_ctl_exe, pg.cluster))
+            pg.close()
+
+    @unittest.skipUnless(sys.platform.startswith('win'), 'Windows only')
+    def test_windows_copy_data(self):
+        pg_ctl_exe = pgtest.get_exe_path('pg_ctl')
+        temp_dir = tempfile.mkdtemp()
+        curr_dir = os.path.dirname(__file__)
+        unzip(os.path.join(curr_dir, 'test_windows_cluster.zip'), temp_dir)
+        data_dir = os.path.join(temp_dir, 'data')
+        with open pgtest.PGTest('test', copy_data_path=data_dir) as pg:
+            self.assertTrue(pgtest.is_server_running(pg_ctl_exe, pg.cluster))
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+    @unittest.skipIf(sys.platform.startswith('win'), 'Unix only')
+    def test_unix_copy_data(self):
+        pg_ctl_exe = pgtest.get_exe_path('pg_ctl')
+        temp_dir = tempfile.mkdtemp()
+        curr_dir = os.path.dirname(__file__)
+        unzip(os.path.join(curr_dir, 'test_unix_cluster.zip'), temp_dir)
+        data_dir = os.path.join(temp_dir, 'data')
+        with open pgtest.PGTest('test', copy_data_path=data_dir) as pg:
+            self.assertTrue(pgtest.is_server_running(pg_ctl_exe, pg.cluster))
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 class TestPgTestDefault(unittest.TestCase, CustomAssertions):
@@ -126,13 +144,6 @@ class TestPgTestDefault(unittest.TestCase, CustomAssertions):
 
 class ModuleFunctionsTest(unittest.TestCase):
 
-    def test_bind_unused_port(self):
-        for _ in xrange(1, 1000):
-            port = pgtest.bind_unused_port()
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.assertEqual(sock.connect_ex(('localhost', port)), 111)
-            sock.close()
-
     def test_is_valid_port(self):
         for i in range(1025, 65534):
             self.assertTrue(pgtest.is_valid_port(i))
@@ -157,21 +168,12 @@ class ModuleFunctionsTest(unittest.TestCase):
             pgtest.get_exe_path('notafile')
 
     def test_str_alphanum_is_valid(self):
-        self.assertTrue(pgtest.str_alphanum('abcdefghijklmnopqrstuvwxyzABCDE'
+        self.assertTrue(pgtest.str_alphanum('_abcdefghijklmnopqrstuvwxyzABCDE'
                                             'FGHIJKLMNOPQRSTUVWXYZ1234567890'))
 
     def test_str_alphanum_is_not_valid(self):
-        for c in r'`¬!"£$%^&*()_+[]{};\'#:@~,./<>? ':
+        for c in r'`¬!"£$%^&*()+[]{};\'#:@~,./<>? ':
             self.assertFalse(pgtest.str_alphanum(c))
-
-    def test_is_valid_cluster_dir(self):
-        pg_ctl_exe = pgtest.get_exe_path('pg_ctl')
-        temp_dir = tempfile.mkdtemp()
-        curr_dir = os.path.dirname(__file__)
-        unzip(os.path.join(curr_dir,'test_cluster.zip'), temp_dir)
-        data_dir = os.path.join(temp_dir, 'data')
-        self.assertTrue(pgtest.is_valid_cluster_dir(pg_ctl_exe, data_dir))
-        shutil.rmtree(temp_dir, ignore_errors=True)
 
     def test_is_not_valid_cluster_dir(self):
         pg_ctl_exe = pgtest.get_exe_path('pg_ctl')
@@ -179,11 +181,42 @@ class ModuleFunctionsTest(unittest.TestCase):
         self.assertFalse(pgtest.is_valid_cluster_dir(pg_ctl_exe, temp_dir))
         shutil.rmtree(temp_dir, ignore_errors=True)
 
+    @unittest.skipUnless(sys.platform.startswith('win'), 'Windows only')
+    def test_windows_is_valid_cluster_dir(self):
+        pg_ctl_exe = pgtest.get_exe_path('pg_ctl')
+        temp_dir = tempfile.mkdtemp()
+        curr_dir = os.path.dirname(__file__)
+        unzip(os.path.join(curr_dir,'test_windows_cluster.zip'), temp_dir)
+        data_dir = os.path.join(temp_dir, 'data')
+        self.assertTrue(pgtest.is_valid_cluster_dir(pg_ctl_exe, data_dir))
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+    @unittest.skipIf(sys.platform.startswith('win'), 'Unix only')
+    def test_linux_is_valid_cluster_dir(self):
+        pg_ctl_exe = pgtest.get_exe_path('pg_ctl')
+        temp_dir = tempfile.mkdtemp()
+        curr_dir = os.path.dirname(__file__)
+        unzip(os.path.join(curr_dir,'test_unix_cluster.zip'), temp_dir)
+        data_dir = os.path.join(temp_dir, 'data')
+        self.assertTrue(pgtest.is_valid_cluster_dir(pg_ctl_exe, data_dir))
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+    @unittest.skipUnless(sys.platform.startswith('win'), 'Windows only')
     def test_is_not_server_running(self):
         pg_ctl_exe = pgtest.get_exe_path('pg_ctl')
         temp_dir = tempfile.mkdtemp()
         curr_dir = os.path.dirname(__file__)
-        unzip(os.path.join(curr_dir,'test_cluster.zip'), temp_dir)
+        unzip(os.path.join(curr_dir,'test_windows_cluster.zip'), temp_dir)
+        data_dir = os.path.join(temp_dir, 'data')
+        self.assertFalse(pgtest.is_server_running(pg_ctl_exe, data_dir))
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+    @unittest.skipIf(sys.platform.startswith('win'), 'Unix only')
+    def test_is_not_server_running(self):
+        pg_ctl_exe = pgtest.get_exe_path('pg_ctl')
+        temp_dir = tempfile.mkdtemp()
+        curr_dir = os.path.dirname(__file__)
+        unzip(os.path.join(curr_dir,'test_unix_cluster.zip'), temp_dir)
         data_dir = os.path.join(temp_dir, 'data')
         self.assertFalse(pgtest.is_server_running(pg_ctl_exe, data_dir))
         shutil.rmtree(temp_dir, ignore_errors=True)
@@ -208,21 +241,20 @@ class UnixFileTest(unittest.TestCase):
 @unittest.skipUnless(sys.platform.startswith('win'), 'Windows only')
 class WindowsFileTest(unittest.TestCase):
 
+    def test_exe_path_is_executable(self):
+        self.assertEqual(True, pgtest.is_exe('C:/Windows/system32/ping.exe'))
+
     def test_which_is_executable(self):
-        self.assertEqual('C:\\Windows\\system32\\ping.exe',
-                         pgtest.which('ping'))
+        self.assertEqual('C:\\Windows\\system32\\ping.exe', pgtest.which('ping'))
 
     def test_which_with_extension_is_executable(self):
-        self.assertEqual('C:\\Windows\\system32\\ping.exe',
-                         pgtest.which('ping.exe'))
+        self.assertEqual('C:\\Windows\\system32\\ping.exe', pgtest.which('ping.exe'))
 
     def test_which_path_is_executable(self):
-        self.assertEqual('C:\\Windows\\system32\\ping.exe',
-                         pgtest.which('C:/Windows/system32/ping'))
+        self.assertEqual('C:\\Windows\\system32\\ping.exe', pgtest.which('C:/Windows/system32/ping'))
 
     def test_which_path_with_extension_is_executable(self):
-        self.assertEqual('C:\\Windows\\system32\\ping.exe',
-                         pgtest.which('C:/Windows/system32/ping.exe'))
+        self.assertEqual('C:\\Windows\\system32\\ping.exe', pgtest.which('C:/Windows/system32/ping.exe'))
 
     def test_which_is_not_executable(self):
         self.assertEqual(None, pgtest.which('does not exist'))

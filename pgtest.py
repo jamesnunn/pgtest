@@ -107,7 +107,7 @@ def str_alphanum(instr):
 
 
 def is_server_running(pg_ctl_exe, path):
-    status_cmd = pg_ctl_exe + ' status -D ' + path
+    status_cmd = '"' + pg_ctl_exe + '" status -D ' + path
     status_proc = subprocess.Popen(status_cmd, shell=True,
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE)
@@ -119,7 +119,7 @@ def is_server_running(pg_ctl_exe, path):
 
 
 def is_valid_cluster_dir(pg_ctl_exe, path):
-    status_cmd = pg_ctl_exe + ' status -D ' + path
+    status_cmd = '"' + pg_ctl_exe + '" status -D ' + path
     status_proc = subprocess.Popen(status_cmd, shell=True,
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE)
@@ -224,11 +224,11 @@ class PGTest(object):
     def start_server(self):
         try:
             if sys.platform.startswith('win'):
-                pg_cmd = (self._pg_ctl_exe + ' start -D ' + self._data_dir +
+                pg_cmd = ('"' + self._pg_ctl_exe + '" start -D ' + self._data_dir +
                           ' -l ' + self._log_file + ' -o "-F -p ' +
                           str(self._port) + ' -d 1 -c logging_collector=off"')
             else:
-                pg_cmd = (self._pg_ctl_exe + ' start -D ' + self._data_dir +
+                pg_cmd = ('"' + self._pg_ctl_exe + '" start -D ' + self._data_dir +
                           ' -l ' + self._log_file + ' -o "-F -p ' +
                           str(self._port) + ' -d 1 -c logging_collector=off -k ' +
                           self._listen_socket_dir + '"')
@@ -245,7 +245,7 @@ class PGTest(object):
             raise
 
     def stop_server(self):
-        stop_cmd = self._pg_ctl_exe + ' stop -m fast -D ' + self._data_dir
+        stop_cmd = '"' + self._pg_ctl_exe + '" stop -m fast -D ' + self._data_dir
         stop = subprocess.Popen(stop_cmd, shell=True, stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
         _, err = stop.communicate()
@@ -275,7 +275,7 @@ class PGTest(object):
                 shutil.rmtree(self._data_dir)
                 shutil.copytree(self._copy_data_path, self._data_dir)
             else:
-                init_cmd = (self._pg_ctl_exe + ' initdb -D ' +
+                init_cmd = ('"' + self._pg_ctl_exe + '" initdb -D ' +
                             self._data_dir + ' -o "-U ' +
                             self._username + ' -A trust"')
                 init_proc = subprocess.Popen(init_cmd, shell=True,

@@ -169,8 +169,8 @@ def pg_ctl_status(pg_ctl_exe, path):
     proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
         stderr=subprocess.PIPE)
     print (cmd)
-    print (out, err)
     out, err = proc.communicate()
+    print (out, err)
     return out, err
 
 

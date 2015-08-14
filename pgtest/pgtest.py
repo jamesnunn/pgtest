@@ -113,7 +113,7 @@ def is_valid_port(port):
         bool, True if the port is within the valid range or False if not
     """
     if not isinstance(port, int):
-        raise TypeError('port must be of type int')
+        return False
     return 1024 < port < 65535
 
 

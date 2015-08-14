@@ -78,10 +78,6 @@ class TestPGTestWithParameters(unittest.TestCase, CustomAssertions):
         with self.assertRaises(AssertionError):
             pgtest.PGTest(username='not-a-name')
 
-    def test_invalid_username_exit(self):
-        with self.assertRaises(TypeError):
-            pgtest.PGTest(username=1)
-
     def test_invalid_pg_ctl_exe_exit(self):
         with self.assertRaises(AssertionError):
             pgtest.PGTest(pg_ctl='/not/a/path/pg_ctl')
@@ -104,7 +100,7 @@ class TestPGTestWithParameters(unittest.TestCase, CustomAssertions):
         with self.assertRaises(AssertionError):
             pgtest.PGTest(port='5432')
 
-    def test_invalid_port_type_exit(self):
+    def test_invalid_base_dir_exit(self):
         with self.assertRaises(AssertionError):
             pgtest.PGTest(base_dir='/not/a/path')
 
@@ -196,8 +192,7 @@ class Test_is_valid_port(unittest.TestCase):
         self.assertFalse(pgtest.is_valid_port(-1))
 
     def test_is_not_valid_port_str(self):
-        with self.assertRaises(TypeError):
-            self.assertFalse(pgtest.is_valid_port('1234'))
+        self.assertFalse(pgtest.is_valid_port('1234'))
 
 
 class Test_is_valid_db_object_name(unittest.TestCase):
@@ -218,9 +213,8 @@ class Test_is_valid_db_object_name(unittest.TestCase):
             for c in (1, 1.0, str):
                 pgtest.is_valid_db_object_name(c)
 
-    def test_is_valid_db_object_name_pg__is_not_valid(self):
+    def test_is_valid_db_object_name_pg_is_not_valid(self):
         self.assertFalse(pgtest.is_valid_db_object_name('pg_myname'))
-
 
 
 class Test_is_valid_server_cluster(unittest.TestCase):
@@ -256,7 +250,7 @@ class Test_which(unittest.TestCase):
         self.assertEqual('/bin/ping', pgtest.which('ping'))
 
     @unittest.skipIf(sys.platform.startswith('win'), 'Unix only')
-    def testunix__which_path_is_executable(self):
+    def testunix_which_path_is_executable(self):
         self.assertEqual('/bin/ping', pgtest.which('/bin/ping'))
 
     @unittest.skipIf(sys.platform.startswith('win'), 'Unix only')

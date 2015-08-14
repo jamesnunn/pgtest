@@ -155,26 +155,7 @@ def is_valid_db_object_name(name):
     return True
 
 
-def pg_ctl_status(pg_ctl_exe, path):
-    """Runs the `pg_ctl status` command on a given cluster path
-
-    Args:
-        pg_ctl_exe - str, path to pg_ctl executable
-        path - str, path to cluster directory
-
-    Returns:
-        (out, err) - result of subprocess.Popen().communicate()
-    """
-    cmd = '"{pg_ctl}" status -D "{path}"'.format(pg_ctl=pg_ctl_exe, path=path)
-    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE)
-    print (cmd)
-    out, err = proc.communicate()
-    print (out, err)
-    return out, err
-
-
-def is_server_running(pg_ctl_exe, path):
+def is_server_running(path):
     """Checks whether a server process is running in a given cluster path
 
     Args:
@@ -184,14 +165,18 @@ def is_server_running(pg_ctl_exe, path):
     Returns:
         bool, whether or not a server is running
     """
-    out, err = pg_ctl_status(pg_ctl_exe, path)
+    pg_ctl_exe = which('pg_ctl')
+    cmd = '"{pg_ctl}" status -D "{path}"'.format(pg_ctl=pg_ctl_exe, path=path)
+    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE)
+    out, _ = proc.communicate()
     if out.decode('utf-8').strip() == 'pg_ctl: no server running':
         return False
     else:
         return True
 
 
-def is_valid_cluster_dir(pg_ctl_exe, path):
+def is_valid_cluster_dir(path):
     """Checks whether a given path is a valid postgres cluster
 
     Args:
@@ -201,11 +186,15 @@ def is_valid_cluster_dir(pg_ctl_exe, path):
     Returns:
         bool, whether or not a directory is a valid postgres cluster
     """
-    out, err = pg_ctl_status(pg_ctl_exe, path)
-    if out and 'server' in out.decode('utf-8'):
-        return True
-    else:
+    pg_controldata_exe = which('pg_controldata')
+    cmd = '"{pg_controldata}" "{path}"'.format(pg_controldata=pg_controldata_exe, path=path)
+    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE)
+    _, err = proc.communicate()
+    if 'No such file or directory' in err.decode('utf-8'):
         return False
+    else:
+        return True
 
 
 class PGTest(object):
@@ -283,7 +272,7 @@ class PGTest(object):
         if copy_cluster:
             assert os.path.exists(copy_cluster), (
                 'Directory does not exist: {path}').format(path=copy_cluster)
-            assert is_valid_cluster_dir(self._pg_ctl_exe, copy_cluster), (
+            assert is_valid_cluster_dir(copy_cluster), (
                 'Directory is not a cluster directory: {path}').format(
                 path=copy_cluster)
         self._copy_cluster = copy_cluster
@@ -466,7 +455,7 @@ class PGTest(object):
                 _, err = proc.communicate()
                 if err:
                     raise IOError(err)
-            assert is_valid_cluster_dir(self._pg_ctl_exe, self._cluster), (
+            assert is_valid_cluster_dir(self._cluster), (
                 'Failed to create cluster: {path}').format(path=self._cluster)
         except:
             self._cleanup()
@@ -499,6 +488,7 @@ class PGTest(object):
     def _is_connection_available(self):
         """Tests if the connection to the new cluster is available
         """
+        # TODO: use pg_isready -p 5433
         try:
             with closing(pg8000.connect(**self.dsn)):
                 return True
@@ -516,3 +506,7 @@ class PGTest(object):
             time.sleep(0.1)
             if datetime.datetime.utcnow() > endtime:
                 raise TimeoutError('Server failed to start')
+
+if __name__ == '__main__':
+    print(which('pg_controldata'))
+    print(is_valid_cluster_dir('/tmp'))

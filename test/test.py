@@ -59,18 +59,18 @@ class TestPGTestWithParameters(unittest.TestCase, CustomAssertions):
     def test_username_valid(self):
         pg_ctl_exe = pgtest.which('pg_ctl')
         with pgtest.PGTest(username='my_user') as pg:
-            self.assertTrue(pgtest.is_server_running(pg_ctl_exe, pg.cluster))
+            self.assertTrue(pgtest.is_server_running(pg.cluster))
 
     def test_pg_ctl_exe_valid(self):
         pg_ctl_exe = pgtest.which('pg_ctl')
         with pgtest.PGTest(pg_ctl=pg_ctl_exe) as pg:
-            self.assertTrue(pgtest.is_server_running(pg_ctl_exe, pg.cluster))
+            self.assertTrue(pgtest.is_server_running(pg.cluster))
 
     def test_base_dir_valid(self):
         pg_ctl_exe = pgtest.which('pg_ctl')
         temp_dir = tempfile.mkdtemp()
         with pgtest.PGTest(base_dir=temp_dir) as pg:
-            self.assertTrue(pgtest.is_server_running(pg_ctl_exe, pg.cluster))
+            self.assertTrue(pgtest.is_server_running(pg.cluster))
         shutil.rmtree(temp_dir, ignore_errors=True)
 
     def test_invalid_username_exit(self):
@@ -116,7 +116,7 @@ class TestPGTestWithParameters(unittest.TestCase, CustomAssertions):
         zf.extractall(temp_dir)
         data_dir = os.path.join(temp_dir, 'data')
         with pgtest.PGTest(copy_cluster=data_dir) as pg:
-            self.assertTrue(pgtest.is_server_running(pg_ctl_exe, pg.cluster))
+            self.assertTrue(pgtest.is_server_running(pg.cluster))
         shutil.rmtree(temp_dir, ignore_errors=True)
 
     @unittest.skipIf(sys.platform.startswith('win'), 'Unix only')
@@ -128,7 +128,7 @@ class TestPGTestWithParameters(unittest.TestCase, CustomAssertions):
         zf.extractall(temp_dir)
         data_dir = os.path.join(temp_dir, 'data')
         with pgtest.PGTest(copy_cluster=data_dir) as pg:
-            self.assertTrue(pgtest.is_server_running(pg_ctl_exe, pg.cluster))
+            self.assertTrue(pgtest.is_server_running(pg.cluster))
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
@@ -153,10 +153,10 @@ class TestPGTestNoParameters(unittest.TestCase, CustomAssertions):
         self.assertRegexMatch(r'postgresql://[\w]+@localhost:[0-9]+/[\w]+', self.pg.url)
 
     def test_cluster_valid(self):
-        self.assertTrue(pgtest.is_valid_cluster_dir(self.pg_ctl_exe, self.pg.cluster))
+        self.assertTrue(pgtest.is_valid_cluster_dir(self.pg.cluster))
 
     def test_cluster_running(self):
-        self.assertTrue(pgtest.is_server_running(self.pg_ctl_exe, self.pg.cluster))
+        self.assertTrue(pgtest.is_server_running(self.pg.cluster))
 
     @unittest.skipIf(sys.platform.startswith('win'), 'Unix only')
     def test_unix_listen_socket_dir_exists(self):
@@ -249,19 +249,19 @@ class Test_is_valid_cluster_dir(unittest.TestCase):
         shutil.rmtree(cls.temp_dir, ignore_errors=True)
 
     def test_is_not_valid_cluster_dir(self):
-        self.assertFalse(pgtest.is_valid_cluster_dir(self.pg_ctl_exe, self.temp_dir))
+        self.assertFalse(pgtest.is_valid_cluster_dir(self.temp_dir))
 
     @unittest.skipUnless(sys.platform.startswith('win'), 'Windows only')
     def test_windows_is_valid_cluster_dir(self):
         zf = zipfile.ZipFile(os.path.join(self.curr_dir, 'data/test_windows_cluster.zip'))
         zf.extractall(self.temp_dir)
-        self.assertTrue(pgtest.is_valid_cluster_dir(self.pg_ctl_exe, self.data_dir))
+        self.assertTrue(pgtest.is_valid_cluster_dir(self.data_dir))
 
     @unittest.skipIf(sys.platform.startswith('win'), 'Unix only')
     def test_unix_is_valid_cluster_dir(self):
         zf = zipfile.ZipFile(os.path.join(self.curr_dir, 'data/test_unix_cluster.zip'))
         zf.extractall(self.temp_dir)
-        self.assertTrue(pgtest.is_valid_cluster_dir(self.pg_ctl_exe, self.data_dir))
+        self.assertTrue(pgtest.is_valid_cluster_dir(self.data_dir))
 
 
 class Test_is_server_running(unittest.TestCase):
@@ -281,13 +281,13 @@ class Test_is_server_running(unittest.TestCase):
     def test_windows_is_not_server_running(self):
         zf = zipfile.ZipFile(os.path.join(self.curr_dir, 'data/test_windows_cluster.zip'))
         zf.extractall(self.temp_dir)
-        self.assertFalse(pgtest.is_server_running(self.pg_ctl_exe, self.data_dir))
+        self.assertFalse(pgtest.is_server_running(self.data_dir))
 
     @unittest.skipIf(sys.platform.startswith('win'), 'Unix only')
     def test_unix_is_not_server_running(self):
         zf = zipfile.ZipFile(os.path.join(self.curr_dir, 'data/test_unix_cluster.zip'))
         zf.extractall(self.temp_dir)
-        self.assertFalse(pgtest.is_server_running(self.pg_ctl_exe, self.data_dir))
+        self.assertFalse(pgtest.is_server_running(self.data_dir))
 
 
 class Test_which(unittest.TestCase):

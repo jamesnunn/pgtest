@@ -1,0 +1,11 @@
+language: python
+python: 2.7
+env:
+  matrix:
+    - TOXENV=py27
+    - TOXENV=py34
+cache:
+  directories:
+    - $HOME/.cache/pip
+install: pip install tox
+script: tox

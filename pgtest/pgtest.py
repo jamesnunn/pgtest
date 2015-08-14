@@ -313,41 +313,66 @@ class PGTest(object):
 
     @property
     def port(self):
+        """Returns the port used by this instance
+        """
         return self._port
 
     @property
     def cluster(self):
+        """Returns the cluster directory path used by this instance
+        """
         return self._cluster
 
     @property
     def log_file(self):
+        """Returns the postgres log file path usef by this instance
+        """
         return self._log_file
 
     @property
     def username(self):
+        """Returns the username from this instance
+        """
         return self._username
 
     @property
     def pg_ctl(self):
+        """Returns the pg_ctl executable path from this instance
+        """
         return self._pg_ctl_exe
 
     @property
     def url(self):
+        """Returns a url of the database created by this instance of PGTest
+        which can be passed into postgresql libraries, e.g:
+
+            >>> import pgtest, sqlalchemy
+            >>> pg = pgtest.PGTest()
+            >>> engine = sqlalchemy.create_engine(self.pg.url)
+        """
         return 'postgresql://{user}@localhost:{port}/{db}'.format(
             user=self._username, port=self._port, db=self._database)
 
     @property
     def dsn(self):
+        """Return a dictionary containing key-value pairs which match dsn
+        keys, for unpacking into other functions requiring a dsn, e.g:
+
+            >>> import pgtest, psycopg2
+            >>> pg = pgtest.PGTest()
+            >>> # e.g. psycopg2 requires a dsn like so:
+            >>> # psycopg2.connect(database="test", user="postgres", password="secret")
+            >>> cnxn = psycopg2.connect(**pg.dsn)
+        """
         return {'port': self._port,
                 'host': 'localhost',
                 'database': self._database,
                 'user': self._username}
 
     def _start_server(self):
-        if is_server_running(self._pg_ctl_exe, self._cluster):
-            print('Server already running: {url}'.format(url=self.url))
-            return
-
+        """Start the portgres server and wait for it to respond before
+        continuing. If an exception is raised, cleanup
+        """
         if sys.platform.startswith('win'):
             socket_opt = ''
         else:
@@ -370,9 +395,8 @@ class PGTest(object):
             print('Server started: {url}'.format(url=self.url))
 
     def _stop_server(self):
-        if not is_server_running(self._pg_ctl_exe, self._cluster):
-            print('Server already stopped')
-            return
+        """Stop the postgres server. If an exception is raised, cleanup
+        """
         cmd = '"{pg_ctl}" stop -m fast -D {cluster}'.format(
             pg_ctl=self._pg_ctl_exe, cluster=self._cluster)
 
@@ -385,18 +409,25 @@ class PGTest(object):
         except:
             self._cleanup()
             raise
-        else:
-            print('Server stopped')
 
     def close(self):
+        """Stop the server and cleanup the direcotries created
+        """
         self._stop_server()
         self._cleanup()
 
     def _cleanup(self):
+        """Deletes all generated directories (but not log files) created by
+        this instance. If not cleaned up for any reason, no big deal since by
+        default the directories are created in the users own temp directory
+        """
         if not self._no_cleanup:
             shutil.rmtree(self._base_dir, ignore_errors=True)
 
     def _init_base_dir(self):
+        """Initiates the base directory and creates a cluster, either brand new
+        or by copying the cluster defined by the user
+        """
         try:
             if self._copy_cluster:
                 shutil.rmtree(self._cluster)
@@ -418,6 +449,8 @@ class PGTest(object):
             raise
 
     def _create_dirs(self):
+        """Creates the directories required by postgres to create the cluster
+        """
         try:
             for path in (self._base_dir, self._cluster,
                          self._listen_socket_dir):
@@ -428,6 +461,8 @@ class PGTest(object):
             raise
 
     def _set_dir_permissions(self):
+        """Sets the directory permissions to 777
+        """
         try:
             for path in (self._base_dir, self._cluster,
                          self._listen_socket_dir):
@@ -438,6 +473,8 @@ class PGTest(object):
             raise
 
     def _is_connection_available(self):
+        """Tests if the connection to the new cluster is available
+        """
         try:
             with closing(pg8000.connect(**self.dsn)):
                 return True
@@ -445,6 +482,11 @@ class PGTest(object):
             return False
 
     def _wait_for_server_ready(self, wait):
+        """Sleep while we have no connection, timing out after `wait` seconds
+
+        Args:
+            wait - int, number of seconds to timeout the connection
+        """
         endtime = datetime.datetime.utcnow() + datetime.timedelta(seconds=wait)
         while not self._is_connection_available():
             time.sleep(0.1)

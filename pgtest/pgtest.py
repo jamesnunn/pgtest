@@ -402,10 +402,9 @@ class PGTest(object):
                 stderr=subprocess.PIPE)
             self._wait_for_server_ready(5)
         except:
+            print('Server failed to start')
             self._cleanup()
             raise
-        else:
-            print('Server started: {url}'.format(url=self.url))
 
     def _stop_server(self):
         """Stop the postgres server. If an exception is raised, cleanup
@@ -488,7 +487,6 @@ class PGTest(object):
     def _is_connection_available(self):
         """Tests if the connection to the new cluster is available
         """
-        # TODO: use pg_isready -p 5433
         try:
             with closing(pg8000.connect(**self.dsn)):
                 return True
@@ -506,7 +504,3 @@ class PGTest(object):
             time.sleep(0.1)
             if datetime.datetime.utcnow() > endtime:
                 raise TimeoutError('Server failed to start')
-
-if __name__ == '__main__':
-    print(which('pg_controldata'))
-    print(is_valid_cluster_dir('/tmp'))

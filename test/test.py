@@ -2,6 +2,7 @@
 from contextlib import closing
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -107,26 +108,13 @@ class TestPGTestWithParameters(unittest.TestCase, CustomAssertions):
         with self.assertRaises(AssertionError):
             pgtest.PGTest(base_dir='/not/a/path')
 
-    @unittest.skipUnless(sys.platform.startswith('win'), 'Windows only')
-    def test_windows_copy_data(self):
+    def test_copy_data(self):
         pg_ctl_exe = pgtest.which('pg_ctl')
         temp_dir = tempfile.mkdtemp()
-        curr_dir = os.path.dirname(__file__)
-        zf = zipfile.ZipFile(os.path.join(curr_dir, 'data/test_windows_cluster.zip'))
-        zf.extractall(temp_dir)
         data_dir = os.path.join(temp_dir, 'data')
-        with pgtest.PGTest(copy_cluster=data_dir) as pg:
-            self.assertTrue(pgtest.is_server_running(pg.cluster))
-        shutil.rmtree(temp_dir, ignore_errors=True)
-
-    @unittest.skipIf(sys.platform.startswith('win'), 'Unix only')
-    def test_unix_copy_data(self):
-        pg_ctl_exe = pgtest.which('pg_ctl')
-        temp_dir = tempfile.mkdtemp()
-        curr_dir = os.path.dirname(__file__)
-        zf = zipfile.ZipFile(os.path.join(curr_dir, 'data/test_unix_cluster.zip'))
-        zf.extractall(temp_dir)
-        data_dir = os.path.join(temp_dir, 'data')
+        cmd = ('"{pg_ctl}" initdb -D "{cluster}" -o "-U postgres -A trust"'
+            ).format(pg_ctl=pg_ctl_exe, cluster=data_dir)
+        subprocess.check_output(cmd, shell=True)
         with pgtest.PGTest(copy_cluster=data_dir) as pg:
             self.assertTrue(pgtest.is_server_running(pg.cluster))
         shutil.rmtree(temp_dir, ignore_errors=True)
@@ -235,7 +223,7 @@ class Test_is_valid_db_object_name(unittest.TestCase):
 
 
 
-class Test_is_valid_cluster_dir(unittest.TestCase):
+class Test_is_valid_server_cluster(unittest.TestCase):
 
     @classmethod
     def setUp(cls):
@@ -243,6 +231,9 @@ class Test_is_valid_cluster_dir(unittest.TestCase):
         cls.temp_dir = tempfile.mkdtemp()
         cls.curr_dir = os.path.dirname(__file__)
         cls.data_dir = os.path.join(cls.temp_dir, 'data')
+        cmd = ('"{pg_ctl}" initdb -D "{cluster}" -o "-U postgres -A trust"'
+            ).format(pg_ctl=cls.pg_ctl_exe, cluster=cls.data_dir)
+        subprocess.check_output(cmd, shell=True)
 
     @classmethod
     def tearDown(cls):
@@ -251,42 +242,10 @@ class Test_is_valid_cluster_dir(unittest.TestCase):
     def test_is_not_valid_cluster_dir(self):
         self.assertFalse(pgtest.is_valid_cluster_dir(self.temp_dir))
 
-    @unittest.skipUnless(sys.platform.startswith('win'), 'Windows only')
-    def test_windows_is_valid_cluster_dir(self):
-        zf = zipfile.ZipFile(os.path.join(self.curr_dir, 'data/test_windows_cluster.zip'))
-        zf.extractall(self.temp_dir)
+    def test_is_valid_cluster_dir(self):
         self.assertTrue(pgtest.is_valid_cluster_dir(self.data_dir))
 
-    @unittest.skipIf(sys.platform.startswith('win'), 'Unix only')
-    def test_unix_is_valid_cluster_dir(self):
-        zf = zipfile.ZipFile(os.path.join(self.curr_dir, 'data/test_unix_cluster.zip'))
-        zf.extractall(self.temp_dir)
-        self.assertTrue(pgtest.is_valid_cluster_dir(self.data_dir))
-
-
-class Test_is_server_running(unittest.TestCase):
-
-    @classmethod
-    def setUp(cls):
-        cls.pg_ctl_exe = pgtest.which('pg_ctl')
-        cls.temp_dir = tempfile.mkdtemp()
-        cls.curr_dir = os.path.dirname(__file__)
-        cls.data_dir = os.path.join(cls.temp_dir, 'data')
-
-    @classmethod
-    def tearDown(cls):
-        shutil.rmtree(cls.temp_dir, ignore_errors=True)
-
-    @unittest.skipUnless(sys.platform.startswith('win'), 'Windows only')
-    def test_windows_is_not_server_running(self):
-        zf = zipfile.ZipFile(os.path.join(self.curr_dir, 'data/test_windows_cluster.zip'))
-        zf.extractall(self.temp_dir)
-        self.assertFalse(pgtest.is_server_running(self.data_dir))
-
-    @unittest.skipIf(sys.platform.startswith('win'), 'Unix only')
-    def test_unix_is_not_server_running(self):
-        zf = zipfile.ZipFile(os.path.join(self.curr_dir, 'data/test_unix_cluster.zip'))
-        zf.extractall(self.temp_dir)
+    def test_is_not_server_running(self):
         self.assertFalse(pgtest.is_server_running(self.data_dir))
 
 

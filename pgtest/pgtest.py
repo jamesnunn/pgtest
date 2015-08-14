@@ -168,6 +168,8 @@ def pg_ctl_status(pg_ctl_exe, path):
     cmd = '"{pg_ctl}" status -D "{path}"'.format(pg_ctl=pg_ctl_exe, path=path)
     proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
         stderr=subprocess.PIPE)
+    print (cmd)
+    print (out, err)
     out, err = proc.communicate()
     return out, err
 

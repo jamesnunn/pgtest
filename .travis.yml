@@ -9,3 +9,9 @@ cache:
     - $HOME/.cache/pip
 install: pip install tox
 script: tox
+os:
+  - linux
+  - osx
+before_install:
+  - sudo apt-get install locate
+  - sudo apt-get install postgresql

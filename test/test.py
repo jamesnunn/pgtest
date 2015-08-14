@@ -312,7 +312,7 @@ class Test_which(unittest.TestCase):
     def test_unix_which_unicode(self):
             self.assertEqual('/bin/ping', pgtest.which(u'ping'))
 
-    @unittest.skipIf(sys.platform.startswith('win'), 'Unix only')
+    @unittest.skipUnless(sys.platform.startswith('win'), 'Windows only')
     def test_windows_which_unicode(self):
             self.assertEqual('C:\\Windows\\system32\\ping.exe', pgtest.which(u'ping'))
 

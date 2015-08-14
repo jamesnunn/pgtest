@@ -201,7 +201,7 @@ def is_valid_cluster_dir(pg_ctl_exe, path):
     out, err = pg_ctl_status(pg_ctl_exe, path)
     if out and 'server' in out.decode('utf-8'):
         return True
-    elif err and 'not a database cluster directory' in err.decode('utf-8'):
+    else:
         return False
 
 

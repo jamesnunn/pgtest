@@ -15,3 +15,5 @@ os:
 before_install:
   - sudo apt-get install locate
   - sudo apt-get install postgresql
+  - sudo apt-get updatedb
+sudo: false

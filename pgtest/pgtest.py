@@ -165,10 +165,11 @@ def pg_ctl_status(pg_ctl_exe, path):
     Returns:
         (out, err) - result of subprocess.Popen().communicate()
     """
-    cmd = '"{pg_ctl}" status -D {path}'.format(pg_ctl=pg_ctl_exe, path=path)
+    cmd = '"{pg_ctl}" status -D "{path}"'.format(pg_ctl=pg_ctl_exe, path=path)
     proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
         stderr=subprocess.PIPE)
-    return proc.communicate()
+    out, err = proc.communicate()
+    return out, err
 
 
 def is_server_running(pg_ctl_exe, path):
@@ -400,7 +401,7 @@ class PGTest(object):
             socket_opt = '-k {unix_socket}'.format(
                 unix_socket=self._listen_socket_dir)
 
-        cmd = ('"{pg_ctl}" start -D {cluster} -l {log_file} -o "-F -d 1 '
+        cmd = ('"{pg_ctl}" start -D "{cluster}" -l "{log_file}" -o "-F -d 1 '
             '-p {port} -c logging_collector=off -N 5 {socket_opt}"').format(
             pg_ctl=self._pg_ctl_exe, cluster=self._cluster,
             log_file=self._log_file, port=self._port,
@@ -454,7 +455,7 @@ class PGTest(object):
                 shutil.rmtree(self._cluster)
                 shutil.copytree(self._copy_cluster, self._cluster)
             else:
-                cmd = ('"{pg_ctl}" initdb -D {cluster} -o "-U {username} -A '
+                cmd = ('"{pg_ctl}" initdb -D "{cluster}" -o "-U {username} -A '
                     'trust"').format(pg_ctl=self._pg_ctl_exe,
                     cluster=self._cluster, username=self._username)
 

@@ -34,22 +34,15 @@ import tempfile
 import time
 import datetime
 if sys.version_info >= (3, 0):
-    str = str
     unicode = str
-    bytes = bytes
     basestring = (str, bytes)
-else:
-    str = str
-    unicode = unicode
-    bytes = str
-    basestring = basestring
 
 import pg8000
 
 
 class TimeoutError(BaseException):
     def __init__(self, message):
-        self.message = message
+        super(TimeoutError, self).__init__(message)
 
 
 def which(in_file):
@@ -91,7 +84,8 @@ def which(in_file):
     if not sys.platform.startswith('win'):
         try:
             exact_file_regex = '/' + in_file + '$'
-            results = subprocess.check_output(['locate', '-r', exact_file_regex])
+            locate_cmd = ['locate', '-r', exact_file_regex]
+            results = subprocess.check_output(locate_cmd)
             for file_path in results.decode('utf-8').split('\n'):
                 if os.access(file_path, os.X_OK):
                     return os.path.normpath(file_path)
@@ -164,7 +158,7 @@ def is_server_running(path):
     pg_ctl_exe = which('pg_ctl')
     cmd = '"{pg_ctl}" status -D "{path}"'.format(pg_ctl=pg_ctl_exe, path=path)
     proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE)
+                            stderr=subprocess.PIPE)
     out, _ = proc.communicate()
     if out.decode('utf-8').strip() == 'pg_ctl: no server running':
         return False
@@ -183,9 +177,10 @@ def is_valid_cluster_dir(path):
         bool, whether or not a directory is a valid postgres cluster
     """
     pg_controldata_exe = which('pg_controldata')
-    cmd = '"{pg_controldata}" "{path}"'.format(pg_controldata=pg_controldata_exe, path=path)
+    cmd = '"{pg_controldata}" "{path}"'.format(
+        pg_controldata=pg_controldata_exe, path=path)
     proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE)
+                            stderr=subprocess.PIPE)
     _, err = proc.communicate()
     if 'No such file or directory' in err.decode('utf-8'):
         return False
@@ -193,13 +188,14 @@ def is_valid_cluster_dir(path):
         return True
 
 
+# pylint: disable=too-many-instance-attributes
 class PGTest(object):
     """Sets up a *very* temporary postgres cluster which can be used as a
     context or instantiated like any other class.
 
     Args:
         username - str, username for default database superuser
-        port - int, port to connect on - you must ensure that the port is unused
+        port - int, port to connect on; you must ensure that the port is unused
         log_file - str, path to place the log file
         no_cleanup - bool, don't clean up dirs after PGTest.close() is called
         copy_cluster - str, copies cluster from this path
@@ -213,8 +209,8 @@ class PGTest(object):
         PGTest.log_file - str, path to postgres log file
         PGTest.pg_ctl - str, path to pg_ctl executable
         PGTest.url - str, url for default postgres database on the cluster
-        PGTest.dsn - dict, dictionary containing dsn key-value pairs for the default
-                     postgres database on the cluster. Hint: unpack dict to dsn keys with **PGTest.dsn
+        PGTest.dsn - dict, dictionary containing dsn key-value pairs for the
+                     default postgres database on the cluster
 
     Methods:
         close() - Closes this instance of PGTest, cleans up directories
@@ -237,9 +233,11 @@ class PGTest(object):
             >>> pg.url
             'postgresql://postgres@localhost:47251/postgres'
             >>> pg.dsn
-            {'user': 'postgres', 'host': 'localhost', 'port': 47251, 'database': 'postgres'}
+            {'user': 'postgres', 'host': 'localhost',
+            'port': 47251, 'database': 'postgres'}
 
-            >>> # Connect with other db driver here, e.g. psql, psycopg2, sqlalchemy etc
+            >>> # Connect with other db driver here, e.g. psql, psycopg2,
+            >>> # sqlalchemy etc
             >>> psycopg2.connect(**pg.dsn)
 
             >>> pg.close()
@@ -247,11 +245,13 @@ class PGTest(object):
 
         As a context:
             >>> with pgtest.PGTest() as pg:
-            ...     # connect to db with psycopg/sqlalchemy etc
-            ...     psycopg2.connect(**pg.dsn)
+            ...    # connect to db with psycopg/sqlalchemy etc
+            ...    psycopg2.connect(**pg.dsn)
     """
+    # pylint: disable=too-many-arguments
     def __init__(self, username='postgres', port=None, log_file=None,
-            no_cleanup=False, copy_cluster=None, base_dir=None, pg_ctl=None):
+                 no_cleanup=False, copy_cluster=None, base_dir=None,
+                 pg_ctl=None):
         self._database = 'postgres'
 
         assert is_valid_db_object_name(username), (
@@ -269,8 +269,8 @@ class PGTest(object):
             assert os.path.exists(copy_cluster), (
                 'Directory does not exist: {path}').format(path=copy_cluster)
             assert is_valid_cluster_dir(copy_cluster), (
-                'Directory is not a cluster directory: {path}').format(
-                path=copy_cluster)
+                'Directory is not a cluster directory: '
+                '{path}').format(path=copy_cluster)
         self._copy_cluster = copy_cluster
 
         if port:
@@ -369,8 +369,9 @@ class PGTest(object):
 
             >>> import pgtest, psycopg2
             >>> pg = pgtest.PGTest()
-            >>> # e.g. psycopg2 requires a dsn like so:
-            >>> # psycopg2.connect(database="test", user="postgres", password="secret")
+            >>> # e.g. psycopg2 requires a dsn like:
+            >>> # psycopg2.connect(database="test",
+            >>> ...user="postgres", password="secret")
             >>> cnxn = psycopg2.connect(**pg.dsn)
         """
         return {'port': self._port,
@@ -389,13 +390,15 @@ class PGTest(object):
                 unix_socket=self._listen_socket_dir)
 
         cmd = ('"{pg_ctl}" start -D "{cluster}" -l "{log_file}" -o "-F -d 1 '
-            '-p {port} -c logging_collector=off -N 5 {socket_opt}"').format(
-            pg_ctl=self._pg_ctl_exe, cluster=self._cluster,
-            log_file=self._log_file, port=self._port,
-            socket_opt=socket_opt)
+               '-p {port} -c logging_collector=off '
+               '-N 5 {socket_opt}"').format(pg_ctl=self._pg_ctl_exe,
+                                            cluster=self._cluster,
+                                            log_file=self._log_file,
+                                            port=self._port,
+                                            socket_opt=socket_opt)
         try:
             subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
+                             stderr=subprocess.PIPE)
             self._wait_for_server_ready(5)
         except:
             print('Server failed to start')
@@ -410,7 +413,7 @@ class PGTest(object):
 
         try:
             proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
+                                    stderr=subprocess.PIPE)
             _, err = proc.communicate()
             if err:
                 raise RuntimeError(err)
@@ -442,11 +445,13 @@ class PGTest(object):
                 shutil.copytree(self._copy_cluster, self._cluster)
             else:
                 cmd = ('"{pg_ctl}" initdb -D "{cluster}" -o "-U {username} -A '
-                    'trust"').format(pg_ctl=self._pg_ctl_exe,
-                    cluster=self._cluster, username=self._username)
+                       'trust"').format(pg_ctl=self._pg_ctl_exe,
+                                        cluster=self._cluster,
+                                        username=self._username)
 
                 proc = subprocess.Popen(cmd, shell=True,
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE)
                 _, err = proc.communicate()
                 if err:
                     raise IOError(err)

@@ -1,7 +1,7 @@
 # pgtest [![Build Status](https://travis-ci.org/jamesnunn/pgtest.svg?branch=master)](https://travis-ci.org/jamesnunn/pgtest)
 
 Creates a temporary, local PostgreSQL database cluster and server specifically for unittesting, and cleans up after itself
-
+```
 Usage:
     As an instance:
         >>> import pgtest, psycopg2
@@ -31,3 +31,4 @@ Usage:
         >>> with pgtest.PGTest() as pg:
         ...    # connect to db with psycopg/sqlalchemy etc
         ...    psycopg2.connect(**pg.dsn)
+```

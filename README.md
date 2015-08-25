@@ -3,7 +3,8 @@
 Creates a temporary, local PostgreSQL database cluster and server specifically for unittesting, and cleans up after itself.
 
 ```
-PGTest(username='postgres', port=None, log_file=None, no_cleanup=False, copy_cluster=None, base_dir=None, pg_ctl=None)
+PGTest(username='postgres', port=None, log_file=None, no_cleanup=False, 
+       copy_cluster=None, base_dir=None, pg_ctl=None)
 
 Args:
     username - str, username for default database superuser

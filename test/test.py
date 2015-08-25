@@ -58,7 +58,6 @@ class TestPGTestWithParameters(unittest.TestCase, CustomAssertions):
         shutil.rmtree(base_dir, ignore_errors=True)
 
     def test_username_valid(self):
-        pg_ctl_exe = pgtest.which('pg_ctl')
         with pgtest.PGTest(username='my_user') as pg:
             self.assertTrue(pgtest.is_server_running(pg.cluster))
 
@@ -68,7 +67,6 @@ class TestPGTestWithParameters(unittest.TestCase, CustomAssertions):
             self.assertTrue(pgtest.is_server_running(pg.cluster))
 
     def test_base_dir_valid(self):
-        pg_ctl_exe = pgtest.which('pg_ctl')
         temp_dir = tempfile.mkdtemp()
         with pgtest.PGTest(base_dir=temp_dir) as pg:
             self.assertTrue(pgtest.is_server_running(pg.cluster))
@@ -109,7 +107,7 @@ class TestPGTestWithParameters(unittest.TestCase, CustomAssertions):
         temp_dir = tempfile.mkdtemp()
         data_dir = os.path.join(temp_dir, 'data')
         cmd = ('"{pg_ctl}" initdb -D "{cluster}" -o "-U postgres -A trust"'
-            ).format(pg_ctl=pg_ctl_exe, cluster=data_dir)
+               ).format(pg_ctl=pg_ctl_exe, cluster=data_dir)
         subprocess.check_output(cmd, shell=True)
         with pgtest.PGTest(copy_cluster=data_dir) as pg:
             self.assertTrue(pgtest.is_server_running(pg.cluster))

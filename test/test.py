@@ -113,6 +113,17 @@ class TestPGTestWithParameters(unittest.TestCase, CustomAssertions):
             self.assertTrue(pgtest.is_server_running(pg.cluster))
         shutil.rmtree(temp_dir, ignore_errors=True)
 
+    def test_max_connections_valid(self):
+        with pgtest.PGTest(max_connections=10) as pg:
+            with psycopg2.connect(**pg.dsn) as connection:
+                with connection.cursor() as cursor:
+                    cursor.execute('SHOW max_connections;')
+                    max_connections = int(list(cursor)[0][0])
+                    self.assertTrue(max_connectios == 10)
+
+    def test_invalid_max_connections_exit(self):
+        with self.assertRaises(AssertionError):
+            pgtest.PGTest(max_connections=3.5)
 
 class TestPGTestNoParameters(unittest.TestCase, CustomAssertions):
 

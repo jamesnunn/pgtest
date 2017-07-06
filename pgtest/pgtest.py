@@ -31,6 +31,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import numbers
 import time
 import datetime
 if sys.version_info >= (3, 0):
@@ -301,6 +302,8 @@ class PGTest(object):
             self._listen_socket_dir = None
 
         self._no_cleanup = no_cleanup
+        assert isinstance(max_connections, numbers.Integral), (
+            'Maximum number of connections must be an integer.')
         self._max_connections = max_connections
 
         self._create_dirs()
@@ -317,10 +320,11 @@ class PGTest(object):
     def __repr__(self):
         return ('{!s}(database={!r}, username={!r}, port={!s}, log_file={!r}, '
                 'no_cleanup={!r}, copy_cluster={!r}, cluster={!r}, '
-                'pg_ctl={!r})').format(
+                'pg_ctl={!r}), max_connections={!r}').format(
                     self.__class__.__name__, self._database, self._username,
                     self._port, self._log_file, self._no_cleanup,
-                    self._copy_cluster, self._base_dir, self._pg_ctl_exe)
+                    self._copy_cluster, self._base_dir, self._pg_ctl_exe,
+                    self._max_connections)
 
     @property
     def port(self):

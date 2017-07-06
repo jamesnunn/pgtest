@@ -31,6 +31,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import numbers
 import time
 import datetime
 if sys.version_info >= (3, 0):
@@ -201,6 +202,7 @@ class PGTest(object):
         copy_cluster - str, copies cluster from this path
         base_dir - str, path to the base directory to init the cluster
         pg_ctl - str, path to the pg_ctl executable to use
+        max_connections - int, maximum number of connections to the cluster
 
     Attributes:
         PGTest.port - int, port number bound by PGTest
@@ -251,7 +253,7 @@ class PGTest(object):
     # pylint: disable=too-many-arguments
     def __init__(self, username='postgres', port=None, log_file=None,
                  no_cleanup=False, copy_cluster=None, base_dir=None,
-                 pg_ctl=None):
+                 pg_ctl=None, max_connections=5):
         self._database = 'postgres'
 
         assert is_valid_db_object_name(username), (
@@ -300,6 +302,9 @@ class PGTest(object):
             self._listen_socket_dir = None
 
         self._no_cleanup = no_cleanup
+        assert isinstance(max_connections, numbers.Integral), (
+            'Maximum number of connections must be an integer.')
+        self._max_connections = max_connections
 
         self._create_dirs()
         self._init_base_dir()
@@ -315,10 +320,11 @@ class PGTest(object):
     def __repr__(self):
         return ('{!s}(database={!r}, username={!r}, port={!s}, log_file={!r}, '
                 'no_cleanup={!r}, copy_cluster={!r}, cluster={!r}, '
-                'pg_ctl={!r})').format(
+                'pg_ctl={!r}), max_connections={!r}').format(
                     self.__class__.__name__, self._database, self._username,
                     self._port, self._log_file, self._no_cleanup,
-                    self._copy_cluster, self._base_dir, self._pg_ctl_exe)
+                    self._copy_cluster, self._base_dir, self._pg_ctl_exe,
+                    self._max_connections)
 
     @property
     def port(self):
@@ -391,10 +397,11 @@ class PGTest(object):
 
         cmd = ('"{pg_ctl}" start -D "{cluster}" -l "{log_file}" -o "-F -d 1 '
                '-p {port} -c logging_collector=off '
-               '-N 5 {socket_opt}"').format(pg_ctl=self._pg_ctl_exe,
+               '-N {max_connections} {socket_opt}"').format(pg_ctl=self._pg_ctl_exe,
                                             cluster=self._cluster,
                                             log_file=self._log_file,
                                             port=self._port,
+                                            max_connections=self._max_connections,
                                             socket_opt=socket_opt)
         try:
             subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,

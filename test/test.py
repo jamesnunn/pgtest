@@ -118,8 +118,7 @@ class TestPGTestWithParameters(unittest.TestCase, CustomAssertions):
             with psycopg2.connect(**pg.dsn) as connection:
                 with connection.cursor() as cursor:
                     cursor.execute('SHOW max_connections;')
-                    max_connections = int(list(cursor)[0][0])
-                    self.assertTrue(max_connectios == 10)
+                    self.assertEqual(int(list(cursor)[0][0]), 10)
 
     def test_invalid_max_connections_exit(self):
         with self.assertRaises(AssertionError):

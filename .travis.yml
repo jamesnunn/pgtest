@@ -11,7 +11,6 @@ install: pip install tox
 script: tox
 os:
   - linux
-  - osx
 before_install:
   - sudo apt-get install locate
   - sudo service postgresql stop

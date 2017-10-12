@@ -8,7 +8,7 @@ setup(
                  'server for unittesting, and cleans up after itself'),
     url='https://github.com/jamesnunn/pgtest',
     author='James Nunn',
-    author_email='jamesnunn123 at gmail.com',
+    author_email='jamesnunn123@gmail.com',
     license='MIT',
     packages=['pgtest'],
     install_requires = ['pg8000 >= 1.10'])

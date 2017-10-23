@@ -17,3 +17,6 @@ before_install:
   - sudo apt-get remove postgresql
   - sudo apt-get install postgresql
   - sudo updatedb
+dist: trusty
+addons:
+  postgresql: "9.5"

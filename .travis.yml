@@ -15,7 +15,7 @@ before_install:
   - sudo apt-get install locate
   - sudo service postgresql stop
   - sudo apt-get remove postgresql
-  - sudo apt-get install postgresql
+  - sudo apt-get install postgresql || true
   - sudo updatedb
 dist: trusty
 addons:

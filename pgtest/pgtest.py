@@ -26,6 +26,7 @@ from __future__ import print_function
 from contextlib import closing
 import os
 import re
+import glob
 import shutil
 import socket
 import subprocess
@@ -50,8 +51,9 @@ def which(in_file):
     """Finds an executable program in the system and returns the program name
 
     Accepts filenames with or without full paths with or without file
-    extensions. If running on unix, the `locate` commmand will be used as a
-    last resort to find the executable.
+    extensions. If running on unix, /usr/lib/postgresql will be searched and
+    the `locate` commmand will be used as a last resort to find the
+    executable.
 
     Args:
         in_file - str, program name or path to find
@@ -83,6 +85,19 @@ def which(in_file):
                     return os.path.normpath(file_path)
 
     if not sys.platform.startswith('win'):
+        # first, search default locations, inspired by Debian's PgCommon.pm
+        try:
+            pg_ctls = { float(re.search(r'postgresql/([\d\.]+)/bin', p).group(1)):
+                    p for p in glob.glob('/usr/lib/postgresql/*/bin/' + in_file)}
+            pg_ctl = pg_ctls[max(pg_ctls)]
+            return os.path.normpath(pg_ctl)
+
+        except (AttributeError, ValueError):  
+            # AttributeError occurs if re.search returns None, 
+            # ValueError if pg_ctls is empty
+            pass
+
+        # otherwise fall back to `locate` command
         try:
             exact_file_regex = '/' + in_file + '$'
             locate_cmd = ['locate', '-r', exact_file_regex]
@@ -91,7 +106,10 @@ def which(in_file):
                 if os.access(file_path, os.X_OK):
                     return os.path.normpath(file_path)
         except subprocess.CalledProcessError:
-            return
+            pass
+
+        return
+
 
 
 def is_valid_port(port):

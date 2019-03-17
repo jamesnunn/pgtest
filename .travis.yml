@@ -11,8 +11,10 @@ install: pip install tox
 script: tox
 os:
   - linux
-before_install:
-  - sudo apt-get install locate
-  - sudo apt-get install postgresql
-  - sudo updatedb
 dist: trusty
+addons:
+  postgresql: " 10" 
+  apt:
+    packages:
+    - postgresql-10
+    - postgresql-client-10

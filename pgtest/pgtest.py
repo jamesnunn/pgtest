@@ -203,6 +203,9 @@ class PGTest(object):
         base_dir - str, path to the base directory to init the cluster
         pg_ctl - str, path to the pg_ctl executable to use
         max_connections - int, maximum number of connections to the cluster
+           defaults to 11 since PostgreSQL 10 on Ubuntu 18.04 defaults
+           max_wal_senders = 10 and PostgreSQL requires the max_connections
+           to be larger than the number of max_wal_senders
 
     Attributes:
         PGTest.port - int, port number bound by PGTest
@@ -253,7 +256,7 @@ class PGTest(object):
     # pylint: disable=too-many-arguments
     def __init__(self, username='postgres', port=None, log_file=None,
                  no_cleanup=False, copy_cluster=None, base_dir=None,
-                 pg_ctl=None, max_connections=5):
+                 pg_ctl=None, max_connections=11):
         self._database = 'postgres'
 
         assert is_valid_db_object_name(username), (

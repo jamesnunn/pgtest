@@ -114,11 +114,11 @@ class TestPGTestWithParameters(unittest.TestCase, CustomAssertions):
         shutil.rmtree(temp_dir, ignore_errors=True)
 
     def test_max_connections_valid(self):
-        with pgtest.PGTest(max_connections=10) as pg:
+        with pgtest.PGTest(max_connections=12) as pg:
             with psycopg2.connect(**pg.dsn) as connection:
                 with connection.cursor() as cursor:
                     cursor.execute('SHOW max_connections;')
-                    self.assertEqual(int(list(cursor)[0][0]), 10)
+                    self.assertEqual(int(list(cursor)[0][0]), 12)
 
     def test_invalid_max_connections_exit(self):
         with self.assertRaises(AssertionError):

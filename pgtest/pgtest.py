@@ -87,13 +87,14 @@ def which(in_file):
     if not sys.platform.startswith('win'):
         # first, search default locations, inspired by Debian's PgCommon.pm
         try:
-            pg_ctls = { float(re.search(r'postgresql/([\d\.]+)/bin', p).group(1)):
+            pg_ctls = {float(re.search(r'postgresql/([\d\.]+)/bin', p).group(1)):
                     p for p in glob.glob('/usr/lib/postgresql/*/bin/' + in_file)}
-            pg_ctl = pg_ctls[max(pg_ctls)]
-            return os.path.normpath(pg_ctl)
+            file_path = pg_ctls[max(pg_ctls)]
+            if os.access(file_path, os.X_OK):
+                return os.path.normpath(file_path)
 
-        except (AttributeError, ValueError):  
-            # AttributeError occurs if re.search returns None, 
+        except (AttributeError, ValueError):
+            # AttributeError occurs if re.search returns None,
             # ValueError if pg_ctls is empty
             pass
 
@@ -109,8 +110,6 @@ def which(in_file):
             pass
 
         return
-
-
 
 def is_valid_port(port):
     """Checks a port number to check if it is within the valid range

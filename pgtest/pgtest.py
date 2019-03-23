@@ -26,6 +26,7 @@ from __future__ import print_function
 from contextlib import closing
 import os
 import re
+import glob
 import shutil
 import socket
 import subprocess
@@ -50,8 +51,9 @@ def which(in_file):
     """Finds an executable program in the system and returns the program name
 
     Accepts filenames with or without full paths with or without file
-    extensions. If running on unix, the `locate` commmand will be used as a
-    last resort to find the executable.
+    extensions. If running on unix, /usr/lib/postgresql will be searched and
+    the `locate` commmand will be used as a last resort to find the
+    executable.
 
     Args:
         in_file - str, program name or path to find
@@ -83,6 +85,20 @@ def which(in_file):
                     return os.path.normpath(file_path)
 
     if not sys.platform.startswith('win'):
+        # first, search default locations, inspired by Debian's PgCommon.pm
+        try:
+            pg_ctls = {float(re.search(r'postgresql/([\d\.]+)/bin', p).group(1)):
+                    p for p in glob.glob('/usr/lib/postgresql/*/bin/' + in_file)}
+            file_path = pg_ctls[max(pg_ctls)]
+            if os.access(file_path, os.X_OK):
+                return os.path.normpath(file_path)
+
+        except (AttributeError, ValueError):
+            # AttributeError occurs if re.search returns None,
+            # ValueError if pg_ctls is empty
+            pass
+
+        # otherwise fall back to `locate` command
         try:
             exact_file_regex = '/' + in_file + '$'
             locate_cmd = ['locate', '-r', exact_file_regex]
@@ -91,8 +107,9 @@ def which(in_file):
                 if os.access(file_path, os.X_OK):
                     return os.path.normpath(file_path)
         except subprocess.CalledProcessError:
-            return
+            pass
 
+        return
 
 def is_valid_port(port):
     """Checks a port number to check if it is within the valid range
@@ -203,6 +220,9 @@ class PGTest(object):
         base_dir - str, path to the base directory to init the cluster
         pg_ctl - str, path to the pg_ctl executable to use
         max_connections - int, maximum number of connections to the cluster
+           defaults to 11 since PostgreSQL 10 on Ubuntu 18.04 defaults
+           max_wal_senders = 10 and PostgreSQL requires the max_connections
+           to be larger than the number of max_wal_senders
 
     Attributes:
         PGTest.port - int, port number bound by PGTest
@@ -253,7 +273,7 @@ class PGTest(object):
     # pylint: disable=too-many-arguments
     def __init__(self, username='postgres', port=None, log_file=None,
                  no_cleanup=False, copy_cluster=None, base_dir=None,
-                 pg_ctl=None, max_connections=5):
+                 pg_ctl=None, max_connections=11):
         self._database = 'postgres'
 
         assert is_valid_db_object_name(username), (

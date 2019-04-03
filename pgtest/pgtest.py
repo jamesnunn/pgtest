@@ -109,7 +109,7 @@ def which(in_file):
         except subprocess.CalledProcessError:
             pass
 
-        return
+        raise ValueError("'{}' could not be found.".format(in_file))
 
 def is_valid_port(port):
     """Checks a port number to check if it is within the valid range

@@ -1,40 +1,89 @@
-# Python package
-# Create and test a Python package on multiple Python versions.
-# Add steps that analyze code, save the dist with the build record, publish to a PyPI-compatible index, and more:
 # https://docs.microsoft.com/azure/devops/pipelines/languages/python
+variables:
+  TOXENV: py36,py27
 
 trigger:
 - master
 
 jobs:
-- job: before_install
-  strategy:
-    matrix:
-      Python27:
-        python.version: '2.7'
-      Python36:
-        python.version: '3.6'
-    maxParallel: 4
+- job: Ubuntu
   pool:
     vmImage: 'Ubuntu-16.04'
   steps:
-  - bash: |
+  - script: |
       sudo apt-get update &&
-      sudo apt-get -y install postgresql locate &&
+      sudo apt-get -y install postgresql &&
       sudo updatedb 
     displayName: Install postgresql
 
-  - script: locate pg_ctl
-
   - task: UsePythonVersion@0
     inputs:
-      versionSpec: '$(python.version)'
+      versionSpec: '3.6'
       architecture: 'x64'
-
-  - script: locate pg_ctl
 
   - script: python -m pip install tox
     displayName: 'Install tox'
    
   - script: tox
     displayName: 'Run tox tests'
+
+
+- job: MacOS
+  pool:
+    vmImage: 'macOS-10.13'
+  steps:
+
+  # alternative: use homebrew
+  #- script: brew install postgresql
+  #  displayName: Install postgresql
+
+  # see https://docs.microsoft.com/en-us/azure/devops/pipelines/languages/anaconda?view=azure-devops&tabs=macos
+  - bash: echo "##vso[task.prependpath]$CONDA/bin"
+    displayName: Add conda to PATH
+
+  - bash: sudo chown -R $USER $CONDA
+    displayName: Take ownership of conda installation
+
+  - script: conda install --yes --quiet postgresql==10.5
+    displayName: Install postgresql
+
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.6'
+      architecture: 'x64'
+
+  - script: python -m pip install tox
+    displayName: 'Install tox'
+   
+  - script: tox
+    displayName: 'Run tox tests'
+
+- job: Windows
+  pool:
+    vmImage: 'vs2017-win2016'
+  variables:
+    TOXENV: py36
+  steps:
+
+  # see https://docs.microsoft.com/en-us/azure/devops/pipelines/languages/anaconda?view=azure-devops&tabs=macos
+  - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
+    displayName: Add conda to PATH
+
+  # needed for access to pg_ctl
+  - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Library\bin"
+    displayName: Add conda library to PATH
+
+  - script: conda install --yes --quiet postgresql==10.5
+    displayName: Install postgresql
+
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.6'
+      architecture: 'x64'
+
+  - script: python -m pip install tox
+    displayName: 'Install tox'
+   
+  - script: tox
+    displayName: 'Run tox tests'
+

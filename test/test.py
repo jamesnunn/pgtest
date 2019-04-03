@@ -15,7 +15,6 @@ import pg8000
 import psycopg2
 import sqlalchemy
 
-
 class TestThirdPartyDrivers(unittest.TestCase):
 
     @classmethod
@@ -255,15 +254,22 @@ class Test_which(unittest.TestCase):
 
     @unittest.skipIf(sys.platform.startswith('win'), 'Unix only')
     def test_unix_which_is_executable(self):
-        self.assertEqual('/bin/ping', pgtest.which('ping'))
+        if sys.platform.startswith('darwin'):
+            self.assertEqual(pgtest.which('ping'), '/sbin/ping')
+        else:
+            self.assertEqual(pgtest.which('ping'), '/bin/ping')
 
     @unittest.skipIf(sys.platform.startswith('win'), 'Unix only')
     def testunix_which_path_is_executable(self):
-        self.assertEqual('/bin/ping', pgtest.which('/bin/ping'))
+        if sys.platform.startswith('darwin'):
+            self.assertEqual(pgtest.which('/sbin/ping'), '/sbin/ping')
+        else:
+            self.assertEqual(pgtest.which('/bin/ping'), '/bin/ping')
 
     @unittest.skipIf(sys.platform.startswith('win'), 'Unix only')
     def test_unix_which_is_not_executable(self):
-        self.assertEqual(None, pgtest.which('doesnotexist'))
+        with self.assertRaises(FileNotFoundError):
+            pgtest.which('doesnotexist')
 
     def test_which_non_string(self):
         with self.assertRaises(TypeError):
@@ -271,27 +277,30 @@ class Test_which(unittest.TestCase):
 
     @unittest.skipIf(sys.platform.startswith('win'), 'Unix only')
     def test_unix_which_unicode(self):
-            self.assertEqual('/bin/ping', pgtest.which(u'ping'))
+        if sys.platform.startswith('darwin'):
+            self.assertEqual(pgtest.which(u'ping'), '/sbin/ping')
+        else:
+            self.assertEqual(pgtest.which(u'ping'), '/bin/ping')
 
     @unittest.skipUnless(sys.platform.startswith('win'), 'Windows only')
     def test_windows_which_unicode(self):
-            self.assertEqual('C:\\Windows\\system32\\ping.exe', pgtest.which(u'ping'))
+        self.assertEqual('C:\\Windows\\system32\\ping.exe'.lower(), pgtest.which(u'ping').lower())
 
     @unittest.skipUnless(sys.platform.startswith('win'), 'Windows only')
     def test_windows_which_is_executable(self):
-        self.assertEqual('C:\\Windows\\system32\\ping.exe', pgtest.which('ping'))
+        self.assertEqual('C:\\Windows\\system32\\ping.exe'.lower(), pgtest.which('ping').lower())
 
     @unittest.skipUnless(sys.platform.startswith('win'), 'Windows only')
     def test_windows_which_with_extension_is_executable(self):
-        self.assertEqual('C:\\Windows\\system32\\ping.exe', pgtest.which('ping.exe'))
+        self.assertEqual('C:\\Windows\\system32\\ping.exe'.lower(), pgtest.which('ping.exe').lower())
 
     @unittest.skipUnless(sys.platform.startswith('win'), 'Windows only')
     def test_windows_which_path_is_executable(self):
-        self.assertEqual('C:\\Windows\\system32\\ping.exe', pgtest.which('C:/Windows/system32/ping'))
+        self.assertEqual('C:\\Windows\\system32\\ping.exe'.lower(), pgtest.which('C:/Windows/system32/ping').lower())
 
     @unittest.skipUnless(sys.platform.startswith('win'), 'Windows only')
     def test_windows_which_path_with_extension_is_executable(self):
-        self.assertEqual('C:\\Windows\\system32\\ping.exe', pgtest.which('C:/Windows/system32/ping.exe'))
+        self.assertEqual('C:\\Windows\\system32\\ping.exe'.lower(), pgtest.which('C:/Windows/system32/ping.exe').lower())
 
     @unittest.skipUnless(sys.platform.startswith('win'), 'Windows only')
     def test_windows_which_is_not_executable(self):

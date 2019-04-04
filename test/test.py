@@ -15,6 +15,11 @@ import pg8000
 import psycopg2
 import sqlalchemy
 
+try:
+    FileNotFoundError
+except NameError:
+    FileNotFoundError = IOError
+
 class TestThirdPartyDrivers(unittest.TestCase):
 
     @classmethod

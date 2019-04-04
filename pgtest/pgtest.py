@@ -35,9 +35,15 @@ import tempfile
 import numbers
 import time
 import datetime
+
 if sys.version_info >= (3, 0):
     unicode = str
     basestring = (str, bytes)
+
+try:
+    FileNotFoundError
+except NameError:
+    FileNotFoundError = IOError
 
 import pg8000
 

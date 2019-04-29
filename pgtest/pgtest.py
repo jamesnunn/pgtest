@@ -35,9 +35,15 @@ import tempfile
 import numbers
 import time
 import datetime
+
 if sys.version_info >= (3, 0):
     unicode = str
     basestring = (str, bytes)
+
+try:
+    FileNotFoundError
+except NameError:
+    FileNotFoundError = IOError
 
 import pg8000
 
@@ -46,6 +52,9 @@ class TimeoutError(BaseException):
     def __init__(self, message):
         super(TimeoutError, self).__init__(message)
 
+def is_executable(file_path):
+    """Checks whether file_path points to executable file."""
+    return file_path and os.path.isfile(file_path) and os.access(file_path, os.X_OK)
 
 def which(in_file):
     """Finds an executable program in the system and returns the program name
@@ -59,30 +68,31 @@ def which(in_file):
         in_file - str, program name or path to find
 
     Returns:
-        file_path - str, normalised path to file found or None if not found
+        file_path - str, normalised path to file found
+        
+    Raises:
+        FileNotFoundError, if no executable file not found
     """
     if not isinstance(in_file, basestring):
         raise TypeError('file must be a valid string')
     path_no_ext, _ = os.path.splitext(in_file)
     path_with_exe = path_no_ext + '.exe'
+
     # Look for the exe at the path supplied
     if os.path.split(path_no_ext)[0]:
-        if os.path.isfile(in_file):
-            file_path = in_file
-        elif os.path.isfile(path_with_exe):
-            file_path = path_with_exe
-        if os.access(file_path, os.X_OK):
-            return os.path.normpath(file_path)
+        if is_executable(in_file):
+            return os.path.normpath(in_file)
+        elif is_executable(path_with_exe):
+            return os.path.normpath(path_with_exe)
+    # Search inside the PATH
     else:
         for path in os.environ['PATH'].split(os.pathsep):
             file_path = os.path.join(path.strip('"'), in_file)
             file_path_with_exe = os.path.join(path.strip('"'), path_with_exe)
-            if os.path.isfile(file_path_with_exe):
-                if os.access(file_path_with_exe, os.X_OK):
-                    return os.path.normpath(file_path_with_exe)
-            elif os.path.isfile(file_path):
-                if os.access(file_path, os.X_OK):
-                    return os.path.normpath(file_path)
+            if is_executable(file_path_with_exe):
+                return os.path.normpath(file_path_with_exe)
+            elif is_executable(file_path):
+                return os.path.normpath(file_path)
 
     if not sys.platform.startswith('win'):
         # first, search default locations, inspired by Debian's PgCommon.pm
@@ -90,7 +100,7 @@ def which(in_file):
             pg_ctls = {float(re.search(r'postgresql/([\d\.]+)/bin', p).group(1)):
                     p for p in glob.glob('/usr/lib/postgresql/*/bin/' + in_file)}
             file_path = pg_ctls[max(pg_ctls)]
-            if os.access(file_path, os.X_OK):
+            if is_executable(file_path):
                 return os.path.normpath(file_path)
 
         except (AttributeError, ValueError):
@@ -104,12 +114,12 @@ def which(in_file):
             locate_cmd = ['locate', '-r', exact_file_regex]
             results = subprocess.check_output(locate_cmd)
             for file_path in results.decode('utf-8').split('\n'):
-                if os.access(file_path, os.X_OK):
+                if is_executable(file_path):
                     return os.path.normpath(file_path)
         except subprocess.CalledProcessError:
             pass
 
-        return
+        raise FileNotFoundError("'{}' could not be found.".format(in_file))
 
 def is_valid_port(port):
     """Checks a port number to check if it is within the valid range

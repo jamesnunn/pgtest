@@ -1,0 +1,89 @@
+# https://docs.microsoft.com/azure/devops/pipelines/languages/python
+variables:
+  TOXENV: py36,py27
+
+trigger:
+- master
+
+jobs:
+- job: Ubuntu
+  pool:
+    vmImage: 'Ubuntu-16.04'
+  steps:
+  - script: |
+      sudo apt-get update &&
+      sudo apt-get -y install postgresql &&
+      sudo updatedb 
+    displayName: Install postgresql
+
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.6'
+      architecture: 'x64'
+
+  - script: python -m pip install tox
+    displayName: 'Install tox'
+   
+  - script: tox
+    displayName: 'Run tox tests'
+
+
+- job: MacOS
+  pool:
+    vmImage: 'macOS-10.13'
+  steps:
+
+  # alternative: use homebrew
+  #- script: brew install postgresql
+  #  displayName: Install postgresql
+
+  # see https://docs.microsoft.com/en-us/azure/devops/pipelines/languages/anaconda?view=azure-devops&tabs=macos
+  - bash: echo "##vso[task.prependpath]$CONDA/bin"
+    displayName: Add conda to PATH
+
+  - bash: sudo chown -R $USER $CONDA
+    displayName: Take ownership of conda installation
+
+  - script: conda install --yes --quiet postgresql==10.5
+    displayName: Install postgresql
+
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.6'
+      architecture: 'x64'
+
+  - script: python -m pip install tox
+    displayName: 'Install tox'
+   
+  - script: tox
+    displayName: 'Run tox tests'
+
+- job: Windows
+  pool:
+    vmImage: 'vs2017-win2016'
+  variables:
+    TOXENV: py36
+  steps:
+
+  # see https://docs.microsoft.com/en-us/azure/devops/pipelines/languages/anaconda?view=azure-devops&tabs=macos
+  - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
+    displayName: Add conda to PATH
+
+  # needed for access to pg_ctl
+  - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Library\bin"
+    displayName: Add conda library to PATH
+
+  - script: conda install --yes --quiet postgresql==10.5
+    displayName: Install postgresql
+
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.6'
+      architecture: 'x64'
+
+  - script: python -m pip install tox
+    displayName: 'Install tox'
+   
+  - script: tox
+    displayName: 'Run tox tests'
+

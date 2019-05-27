@@ -230,9 +230,9 @@ class PGTest(object):
         base_dir - str, path to the base directory to init the cluster
         pg_ctl - str, path to the pg_ctl executable to use
         max_connections - int, maximum number of connections to the cluster
-           defaults to 11 since PostgreSQL 10 on Ubuntu 18.04 defaults
-           max_wal_senders = 10 and PostgreSQL requires the max_connections
-           to be larger than the number of max_wal_senders
+           Note: PostgreSQL may require a minimum number of allowed connections
+             (e.g. 11 connections with PostgreSQL 10 on Ubuntu 18.04 or 14
+             connections with PostgresSQL 11 on Ubuntu 19.04)
 
     Attributes:
         PGTest.port - int, port number bound by PGTest
@@ -283,7 +283,7 @@ class PGTest(object):
     # pylint: disable=too-many-arguments
     def __init__(self, username='postgres', port=None, log_file=None,
                  no_cleanup=False, copy_cluster=None, base_dir=None,
-                 pg_ctl=None, max_connections=11):
+                 pg_ctl=None, max_connections=None):
         self._database = 'postgres'
 
         assert is_valid_db_object_name(username), (
@@ -332,7 +332,7 @@ class PGTest(object):
             self._listen_socket_dir = None
 
         self._no_cleanup = no_cleanup
-        assert isinstance(max_connections, numbers.Integral), (
+        assert max_connections is None or isinstance(max_connections, numbers.Integral), (
             'Maximum number of connections must be an integer.')
         self._max_connections = max_connections
 
@@ -350,11 +350,10 @@ class PGTest(object):
     def __repr__(self):
         return ('{!s}(database={!r}, username={!r}, port={!s}, log_file={!r}, '
                 'no_cleanup={!r}, copy_cluster={!r}, cluster={!r}, '
-                'pg_ctl={!r}), max_connections={!r}').format(
+                'pg_ctl={!r})').format(
                     self.__class__.__name__, self._database, self._username,
                     self._port, self._log_file, self._no_cleanup,
-                    self._copy_cluster, self._base_dir, self._pg_ctl_exe,
-                    self._max_connections)
+                    self._copy_cluster, self._base_dir, self._pg_ctl_exe)
 
     @property
     def port(self):
@@ -425,13 +424,18 @@ class PGTest(object):
             socket_opt = '-k {unix_socket}'.format(
                 unix_socket=self._listen_socket_dir)
 
+        if self._max_connections is None:
+            connections_opt = ''
+        else:
+            connections_opt = '-N {max_connections}'.format(max_connections=self._max_connections)
+
         cmd = ('"{pg_ctl}" start -D "{cluster}" -l "{log_file}" -o "-F -d 1 '
                '-p {port} -c logging_collector=off '
-               '-N {max_connections} {socket_opt}"').format(pg_ctl=self._pg_ctl_exe,
+               '{connections_opt} {socket_opt}"').format(pg_ctl=self._pg_ctl_exe,
                                             cluster=self._cluster,
                                             log_file=self._log_file,
                                             port=self._port,
-                                            max_connections=self._max_connections,
+                                            connections_opt=connections_opt,
                                             socket_opt=socket_opt)
         try:
             subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,

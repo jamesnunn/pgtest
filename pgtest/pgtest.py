@@ -375,6 +375,15 @@ class PGTest(object):
         return self._log_file
 
     @property
+    def log_file_contents(self):
+        """Returns contents of postgres log file
+        """
+        with open(self._log_file, 'r') as handle:
+            content = handle.read()
+
+        return content
+
+    @property
     def username(self):
         """Returns the username from this instance
         """
@@ -439,6 +448,7 @@ class PGTest(object):
             self._wait_for_server_ready(5)
         except:
             print('Server failed to start')
+            print(self.log_file_contents)
             self._cleanup()
             raise
 
@@ -455,6 +465,7 @@ class PGTest(object):
             if err:
                 raise RuntimeError(err)
         except:
+            print(self.log_file_contents)
             self._cleanup()
             raise
 

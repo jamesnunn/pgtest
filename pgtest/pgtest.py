@@ -285,6 +285,7 @@ class PGTest(object):
                  no_cleanup=False, copy_cluster=None, base_dir=None,
                  pg_ctl=None, max_connections=None):
         self._database = 'postgres'
+        self._proc_start = None
 
         assert is_valid_db_object_name(username), (
             'Username must contain only letters and/or numbers')
@@ -447,8 +448,8 @@ class PGTest(object):
                                             connections_opt=connections_opt,
                                             socket_opt=socket_opt)
         try:
-            subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE)
+            self._proc_start = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
+                                                stderr=subprocess.PIPE)
             self._wait_for_server_ready(5)
         except:
             print('Server failed to start')
@@ -477,6 +478,9 @@ class PGTest(object):
         """Stop the server and cleanup the direcotries created
         """
         self._stop_server()
+        if self._proc_start is not None:
+            self._proc_start.communicate() # Ensures all file descriptors are closed
+            self._proc_start = None
         self._cleanup()
 
     def _cleanup(self):

@@ -36,6 +36,9 @@ import numbers
 import time
 import datetime
 
+__all__ = ('PGTest', 'is_executable', 'which', 'is_server_running', 'is_valid_cluster_dir', 'is_valid_db_object_name',
+           'is_valid_port')
+
 if sys.version_info >= (3, 0):
     unicode = str
     basestring = (str, bytes)
@@ -415,7 +418,7 @@ class PGTest(object):
             >>> pg = pgtest.PGTest()
             >>> # e.g. psycopg2 requires a dsn like:
             >>> # psycopg2.connect(database="test",
-            >>> ...user="postgres", password="secret")
+            >>> # ...user="postgres", password="secret")
             >>> cnxn = psycopg2.connect(**pg.dsn)
         """
         return {'port': self._port,

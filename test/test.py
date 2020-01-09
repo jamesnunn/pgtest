@@ -6,7 +6,6 @@ import subprocess
 import sys
 import tempfile
 import unittest
-import zipfile
 
 from . import CustomAssertions
 from pgtest import pgtest

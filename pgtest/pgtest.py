@@ -501,7 +501,7 @@ class PGTest(object):
                 shutil.copytree(self._copy_cluster, self._cluster)
             else:
                 cmd = ('"{pg_ctl}" initdb -D "{cluster}" -o "-U {username} -A '
-                       'trust"').format(pg_ctl=self._pg_ctl_exe,
+                       'trust -E UTF8"').format(pg_ctl=self._pg_ctl_exe,
                                         cluster=self._cluster,
                                         username=self._username)
 

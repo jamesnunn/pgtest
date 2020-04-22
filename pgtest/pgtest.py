@@ -236,6 +236,7 @@ class PGTest(object):
            Note: PostgreSQL may require a minimum number of allowed connections
              (e.g. 11 connections with PostgreSQL 10 on Ubuntu 18.04 or 14
              connections with PostgresSQL 11 on Ubuntu 19.04)
+        default_encoding - str, default encoding, for example, 'UTF8'
 
     Attributes:
         PGTest.port - int, port number bound by PGTest
@@ -286,7 +287,7 @@ class PGTest(object):
     # pylint: disable=too-many-arguments
     def __init__(self, username='postgres', port=None, log_file=None,
                  no_cleanup=False, copy_cluster=None, base_dir=None,
-                 pg_ctl=None, max_connections=None):
+                 pg_ctl=None, max_connections=None, default_encoding=None):
         self._database = 'postgres'
         self._proc_start = None
 
@@ -339,6 +340,11 @@ class PGTest(object):
         assert max_connections is None or isinstance(max_connections, numbers.Integral), (
             'Maximum number of connections must be an integer.')
         self._max_connections = max_connections
+
+        if default_encoding:
+            self._default_encoding = default_encoding
+        else:
+            self._default_encoding = None
 
         self._create_dirs()
         self._init_base_dir()
@@ -503,10 +509,16 @@ class PGTest(object):
                 shutil.rmtree(self._cluster)
                 shutil.copytree(self._copy_cluster, self._cluster)
             else:
+                if self._default_encoding is None:
+                    encoding_opt = ''
+                else:
+                    encoding_opt = '--encoding {default_encoding}'.format(default_encoding=self._default_encoding)
+
                 cmd = ('"{pg_ctl}" initdb -D "{cluster}" -o "-U {username} -A '
-                       'trust"').format(pg_ctl=self._pg_ctl_exe,
+                       'trust {encoding_opt}"').format(pg_ctl=self._pg_ctl_exe,
                                         cluster=self._cluster,
-                                        username=self._username)
+                                        username=self._username,
+                                        encoding_opt=encoding_opt)
 
                 proc = subprocess.Popen(cmd, shell=True,
                                         stdout=subprocess.PIPE,

@@ -1,0 +1,158 @@
+name: ci
+
+on: [push, pull_request]
+
+jobs:
+
+  pre-commit:
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+
+    - name: Install python dependencies
+      run: |
+        pip install pre-commit
+        pip freeze
+
+    - name: Run pre-commit
+      run:
+        pre-commit run --all-files || ( git status --short ; git diff ; exit 1 )
+
+  ubuntu-apt:
+    # ubuntu using postgresql installed via apt
+
+    runs-on: ubuntu-20.04
+    timeout-minutes: 5
+
+    strategy:
+      matrix:
+        python-version: [3.9]
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install system dependencies
+      run: |
+        sudo rm -f /etc/apt/sources.list.d/dotnetdev.list /etc/apt/sources.list.d/microsoft-prod.list
+        sudo apt update
+        sudo apt install postgresql-12
+        sudo cat /etc/postgresql/12/main/pg_hba.conf
+        sudo pg_ctlcluster 12 main start
+
+    - name: Install pgsu
+      run: |
+        pip install tox
+        pip freeze
+
+    - name: Run test suite
+      run: tox
+      env:
+        PGSU_TEST_PORT: 5433  # for some reason default on GH actions
+
+
+  ubuntu-postgres-service:
+    # ubuntu using postgres docker container (service provided by github actions)
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    strategy:
+      matrix:
+        python-version: [3.9]
+        postgres-pw: ["testpw"]
+
+    services:
+      postgres:
+        image: postgres:10.8
+        env:
+          POSTRGRES_USER: postgres
+          POSTGRES_PASSWORD:  ${{ matrix.postgres-pw}}
+          POSTGRES_DB: test_db
+        ports:
+        # will assign a random free host port
+        - 5432/tcp
+        options:  --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install tox
+      run: |
+        pip install tox
+        pip freeze
+
+    - name: Run test suite
+      env:
+        PGSU_TEST_PASSWORD: ${{ matrix.postgres-pw}}
+        PGSU_TEST_PORT: ${{ job.services.postgres.ports[5432] }}
+      run: tox
+
+    - name: Upload coverage report
+      if: github.repository == 'aiidateam/pgsu'
+      uses: codecov/codecov-action@v1
+      with:
+        name: ubuntu-postgres-service
+        file: ./coverage.xml
+        fail_ci_if_error: true
+
+
+  multi-conda:
+    # windows and macos with postgres installed via conda (+pgtest)
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+
+    strategy:
+      matrix:
+        python-version: [3.9]
+        os: ['macos-12', 'windows-2019']
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - uses: conda-incubator/setup-miniconda@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install system dependencies
+      shell: bash -l {0}
+      run: |
+        conda install -y -c anaconda postgresql
+        initdb -D test_db
+        pg_ctl -D test_db -o "-d 5" start  # start with debugging
+
+    # - name: Create postgres superuser on Windows
+    #   if: matrix.os == 'windows-2019'
+    #   shell: bash -l {0}
+    #   run: |
+    #     createuser -U runneradmin -s postgres
+
+    - name: Install tox
+      run: |
+        pip install tox
+        pip freeze
+
+    - name: Run test suite
+      run: tox

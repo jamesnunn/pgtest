@@ -119,7 +119,7 @@ def which(in_file):
             for file_path in results.decode('utf-8').split('\n'):
                 if is_executable(file_path):
                     return os.path.normpath(file_path)
-        except subprocess.CalledProcessError:
+        except (FileNotFoundError, subprocess.CalledProcessError):
             pass
 
         raise FileNotFoundError("'{}' could not be found.".format(in_file))

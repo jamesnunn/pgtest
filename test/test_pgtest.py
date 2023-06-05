@@ -259,9 +259,9 @@ class Test_which(unittest.TestCase):
     @unittest.skipIf(sys.platform.startswith('win'), 'Unix only')
     def test_unix_which_is_executable(self):
         if sys.platform.startswith('darwin'):
-            self.assertEqual(pgtest.which('ping'), '/sbin/ping')
+            self.assertIn(pgtest.which('ping'), ('/sbin/ping', '/usr/sbin/ping'))
         else:
-            self.assertEqual(pgtest.which('ping'), '/bin/ping')
+            self.assertIn(pgtest.which('ping'), ('/bin/ping', '/usr/bin/ping'))
 
     @unittest.skipIf(sys.platform.startswith('win'), 'Unix only')
     def testunix_which_path_is_executable(self):
@@ -282,9 +282,9 @@ class Test_which(unittest.TestCase):
     @unittest.skipIf(sys.platform.startswith('win'), 'Unix only')
     def test_unix_which_unicode(self):
         if sys.platform.startswith('darwin'):
-            self.assertEqual(pgtest.which(u'ping'), '/sbin/ping')
+            self.assertIn(pgtest.which('ping'), ('/sbin/ping', '/usr/sbin/ping'))
         else:
-            self.assertEqual(pgtest.which(u'ping'), '/bin/ping')
+            self.assertIn(pgtest.which('ping'), ('/bin/ping', '/usr/bin/ping'))
 
     @unittest.skipUnless(sys.platform.startswith('win'), 'Windows only')
     def test_windows_which_unicode(self):

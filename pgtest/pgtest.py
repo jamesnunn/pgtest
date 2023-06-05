@@ -44,7 +44,7 @@ if sys.version_info >= (3, 0):
     basestring = (str, bytes)
 
 try:
-    FileNotFoundError
+    FileNotFoundError  # pylint: disable=used-before-assignment
 except NameError:
     FileNotFoundError = IOError
 

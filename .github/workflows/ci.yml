@@ -30,9 +30,14 @@ jobs:
         python -m pip install tox tox-gh-actions
     - name: Test with tox
       run: tox
-      env:
-        PGSU_TEST_PORT: 5433  # for some reason default on GH actions
 
+    - name: Upload coverage report
+      if: github.repository == 'jamesnunn/pgtest'
+      uses: codecov/codecov-action@v1
+      with:
+        name: ubuntu-apt
+        file: ./coverage.xml
+        fail_ci_if_error: true
 
   multi-conda:
     # windows and macos with postgres installed via conda

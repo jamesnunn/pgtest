@@ -1,4 +1,5 @@
-# pgtest [![Build Status](https://travis-ci.org/jamesnunn/pgtest.svg?branch=master)](https://travis-ci.org/jamesnunn/pgtest)
+# pgtest [![Build Status](https://github.com/jamesnunn/pgtest/workflows/ci/badge.svg)](https://github.com/jamesnunn/pgtest/actions)
+
 
 Creates a temporary, local PostgreSQL database cluster and server specifically for unittesting, and cleans up after itself.
 

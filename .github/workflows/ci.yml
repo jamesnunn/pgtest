@@ -12,16 +12,8 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [3.9]
-
+        python-version: [3.7, 3.11]
     steps:
-    - uses: actions/checkout@v2
-
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-
     - name: Install system dependencies
       run: |
         sudo rm -f /etc/apt/sources.list.d/dotnetdev.list /etc/apt/sources.list.d/microsoft-prod.list
@@ -29,13 +21,16 @@ jobs:
         sudo apt install postgresql-12
         sudo cat /etc/postgresql/12/main/pg_hba.conf
         sudo pg_ctlcluster 12 main start
-
-    - name: Install pgsu
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
       run: |
-        pip install tox
-        pip freeze
-
-    - name: Run test suite
+        python -m pip install --upgrade pip
+        python -m pip install tox tox-gh-actions
+    - name: Test with tox
       run: tox
       env:
         PGSU_TEST_PORT: 5433  # for some reason default on GH actions
@@ -49,9 +44,8 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [3.9]
+        python-version: [3.7, 3.11]
         postgres-pw: ["testpw"]
-
     services:
       postgres:
         image: postgres:10.8
@@ -63,32 +57,28 @@ jobs:
         # will assign a random free host port
         - 5432/tcp
         options:  --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
-
     steps:
-    - uses: actions/checkout@v2
+    - name: Install system dependencies
+      run: |
+        sudo rm -f /etc/apt/sources.list.d/dotnetdev.list /etc/apt/sources.list.d/microsoft-prod.list
+        sudo apt update
+        sudo apt install postgresql-12
+        sudo cat /etc/postgresql/12/main/pg_hba.conf
+        sudo pg_ctlcluster 12 main start
+    - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
-
-    - name: Install tox
+    - name: Install dependencies
       run: |
-        pip install tox
-        pip freeze
-
-    - name: Run test suite
+        python -m pip install --upgrade pip
+        python -m pip install tox tox-gh-actions
+    - name: Test with tox
+      run: tox
       env:
         PGSU_TEST_PASSWORD: ${{ matrix.postgres-pw}}
         PGSU_TEST_PORT: ${{ job.services.postgres.ports[5432] }}
-      run: tox
-
-    - name: Upload coverage report
-      if: github.repository == 'aiidateam/pgsu'
-      uses: codecov/codecov-action@v1
-      with:
-        name: ubuntu-postgres-service
-        file: ./coverage.xml
-        fail_ci_if_error: true
 
 
   multi-conda:
@@ -99,11 +89,11 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [3.9]
+        python-version: [3.7,3.11]
         os: ['macos-12', 'windows-2019']
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v1
@@ -127,10 +117,9 @@ jobs:
     #   run: |
     #     createuser -U runneradmin -s postgres
 
-    - name: Install tox
+    - name: Install dependencies
       run: |
-        pip install tox
-        pip freeze
-
-    - name: Run test suite
+        python -m pip install --upgrade pip
+        python -m pip install tox tox-gh-actions
+    - name: Test with tox
       run: tox

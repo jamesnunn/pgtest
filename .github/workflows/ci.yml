@@ -4,28 +4,6 @@ on: [push, pull_request]
 
 jobs:
 
-  pre-commit:
-
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-
-    steps:
-    - uses: actions/checkout@v2
-
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.9
-
-    - name: Install python dependencies
-      run: |
-        pip install pre-commit
-        pip freeze
-
-    - name: Run pre-commit
-      run:
-        pre-commit run --all-files || ( git status --short ; git diff ; exit 1 )
-
   ubuntu-apt:
     # ubuntu using postgresql installed via apt
 

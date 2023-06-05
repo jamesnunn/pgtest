@@ -19,8 +19,6 @@ jobs:
         sudo rm -f /etc/apt/sources.list.d/dotnetdev.list /etc/apt/sources.list.d/microsoft-prod.list
         sudo apt update
         sudo apt install postgresql-12
-        sudo cat /etc/postgresql/12/main/pg_hba.conf
-        sudo pg_ctlcluster 12 main start
     - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
@@ -36,53 +34,8 @@ jobs:
         PGSU_TEST_PORT: 5433  # for some reason default on GH actions
 
 
-  ubuntu-postgres-service:
-    # ubuntu using postgres docker container (service provided by github actions)
-
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-
-    strategy:
-      matrix:
-        python-version: [3.7, 3.11]
-        postgres-pw: ["testpw"]
-    services:
-      postgres:
-        image: postgres:10.8
-        env:
-          POSTRGRES_USER: postgres
-          POSTGRES_PASSWORD:  ${{ matrix.postgres-pw}}
-          POSTGRES_DB: test_db
-        ports:
-        # will assign a random free host port
-        - 5432/tcp
-        options:  --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
-    steps:
-    - name: Install system dependencies
-      run: |
-        sudo rm -f /etc/apt/sources.list.d/dotnetdev.list /etc/apt/sources.list.d/microsoft-prod.list
-        sudo apt update
-        sudo apt install postgresql-12
-        sudo cat /etc/postgresql/12/main/pg_hba.conf
-        sudo pg_ctlcluster 12 main start
-    - uses: actions/checkout@v3
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install tox tox-gh-actions
-    - name: Test with tox
-      run: tox
-      env:
-        PGSU_TEST_PASSWORD: ${{ matrix.postgres-pw}}
-        PGSU_TEST_PORT: ${{ job.services.postgres.ports[5432] }}
-
-
   multi-conda:
-    # windows and macos with postgres installed via conda (+pgtest)
+    # windows and macos with postgres installed via conda
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 5
@@ -108,8 +61,6 @@ jobs:
       shell: bash -l {0}
       run: |
         conda install -y -c anaconda postgresql
-        initdb -D test_db
-        pg_ctl -D test_db -o "-d 5" start  # start with debugging
 
     # - name: Create postgres superuser on Windows
     #   if: matrix.os == 'windows-2019'

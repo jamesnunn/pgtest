@@ -32,7 +32,7 @@ Methods:
 
 Usage as an instance
 ```
->>> from pgtest.pgtest import PGTest
+>>> from pgtest import PGTest
 >>> import psycopg2
 >>> pg = PGTest()
 Server started: postgresql://postgres@localhost:47251/postgres
@@ -60,7 +60,7 @@ Server stopped
 
 Or use as a context:
 ```
->>> from pgtest.pgtest import PGTest
+>>> from pgtest import PGTest
 >>> import psycopg2
 >>> with PGTest() as pg:
 ...    # connect to db with psycopg/sqlalchemy etc
